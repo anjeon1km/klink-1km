@@ -371,3 +371,13 @@ details.more > :not(summary) { margin-bottom: 10px; }
 .guide-btn.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .guide-btn:disabled { opacity: .4; cursor: default; }
 .guide-next { font-size: 14.5px; color: var(--ink-2); }
+.guide-next:empty { display: none; }
+.caution-pin.steep { background: var(--r); color: #fff; font-size: 12px; }
+.guide-alert { border-radius: 18px; padding: 16px 18px; display: grid; gap: 4px; background: var(--y); color: #2a1f00; box-shadow: 0 4px 14px rgba(0,0,0,.18); animation: guide-pop .25s ease-out; }
+.guide-alert.steep { background: var(--r); color: #fff; }
+.guide-alert-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; opacity: .9; }
+.guide-alert-dist { font-size: 15px; }
+.guide-alert-title { font-size: 26px; font-weight: 800; line-height: 1.25; }
+.guide-alert-advice { font-size: 16px; font-weight: 600; }
+@keyframes guide-pop { from { transform: scale(.96); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .guide-alert { animation: none; } }

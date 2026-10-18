@@ -107,15 +107,19 @@ export function fastCost(net, i, dir, ctx) {
 }
 
 // ── 보행 경로 프로필 (교통약자 포함)
-// 장애인등편의법 시행규칙: 보도 기울기 1/18(5.6%) 이하, 경사로 1/12(8.3%) 이하. 휠체어는 8%를 넘는 길과 계단을 뺍니다.
+// 장애인등편의법 시행규칙: 보도 기울기 1/18(5.6%) 이하, 경사로 1/12(8.3%) 이하.
+// 휠체어는 1/12을 넘는 길과 계단을 빼고, 1/18 이하 구간을 우선 연결합니다 (정책제안서 2장).
+export const WHEELCHAIR_MAX_SLOPE = 100 / 12;
 export const WALK_PROFILES = {
   general: { name: '걷기', kmh: 4.8 },
-  wheelchair: { name: '휠체어', kmh: 3.6, maxSlope: 8, slopeFrom: 3, slopeW: 0.35, noSteps: true, noRough: true, unsigW: 0.6, sharedW: 0.3, blockReports: true },
+  wheelchair: { name: '휠체어', kmh: 3.6, maxSlope: WHEELCHAIR_MAX_SLOPE, slopeFrom: 100 / 18, slopeW: 0.35, noSteps: true, noRough: true, unsigW: 0.6, sharedW: 0.3, blockReports: true },
   blind: { name: '시각장애', kmh: 3.6, slopeFrom: 6, slopeW: 0.1, stepsW: 2, roughW: 1, unsigW: 1.5, sharedW: 0.8, pathW: 0.5, blockReports: true },
   lowslope: { name: '경사 적게', kmh: 4.0, maxSlope: 12, slopeFrom: 3, slopeW: 0.3, stepsW: 2 },
 };
 // 기준을 지키는 길이 없을 때 쓰는 완화 프로필 (가장 완만한 길 + 경고)
 WALK_PROFILES.wheelchairRelaxed = { ...WALK_PROFILES.wheelchair, name: '휠체어 (완화)', maxSlope: 16, slopeW: 0.8 };
+// 1/6(16%)을 지키는 길도 없을 때(언덕 위 목적지): 경사 제한 없이 가장 완만한 길 — 동행·택시를 권하고 급경사를 미리 알림
+WALK_PROFILES.wheelchairSteep = { ...WALK_PROFILES.wheelchair, name: '휠체어 (동행 필요)', maxSlope: null, slopeW: 1.2 };
 WALK_PROFILES.lowslopeRelaxed = { ...WALK_PROFILES.lowslope, name: '경사 적게 (완화)', maxSlope: null, slopeW: 0.6 };
 
 // Tobler hiking function scaled so flat ground = base km/h

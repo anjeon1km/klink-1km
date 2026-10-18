@@ -8,7 +8,7 @@ import { PARAMS } from '../../core/params.js';
 import { TYPES } from '../../core/analysis.js';
 import { store } from '../../store.js';
 import { startGuide } from './guide.js';
-import { stepTitle, stepCautions } from './steps.js';
+import { stepTitle, stepCautions, alertsFor } from './steps.js';
 import { ICON } from '../icons.js';
 
 const SCENARIOS = [
@@ -16,6 +16,7 @@ const SCENARIOS = [
   { id: 'B', label: '평일 밤 귀가 · 회기역 → 이문동 주택가', time: 1390, from: 'H1', to: { lat: 37.59852, lon: 127.06402, label: '이문동 주택가 (이문로 일대)' }, profile: 'pm' },
   { id: 'R', label: '하교 · 캠퍼스 상부 → 회기역', time: 1050, from: 'H3', to: 'H1', profile: 'pm' },
   { id: 'W', label: '휠체어 · 회기역 → 경희의료원', time: 600, from: 'H1', to: 'H2', profile: 'wheelchair' },
+  { id: 'W2', label: '휠체어 · 회기역 → 캠퍼스 상부 (급경사)', time: 600, from: 'H1', to: 'H3', profile: 'wheelchair' },
   { id: 'V', label: '시각장애 · 회기역 → 경희의료원', time: 600, from: 'H1', to: 'H2', profile: 'blind' },
 ];
 export const PROFILES = [
@@ -138,23 +139,24 @@ function walkHero(p, app, map) {
   if (!w) return h('section.hero.warn', null, h('div.hero-eyebrow', null, `${pr.label} 경로 없음`), h('p.hero-line', null, '조건에 맞는 길을 찾지 못했어요. 아래 버스나 택시를 이용하세요.'));
   const sm = w.summary;
   const checks = [];
+  const al = alertsFor(w, p.profile); const steep = al.filter(a => a.kind === 'steep'); const unsig = al.filter(a => a.kind === 'crossUnsig');
   if (p.profile === 'wheelchair' || p.profile === 'lowslope') {
     checks.push(h('span.check' + (sm.stairs ? '' : '.good'), null, sm.stairs ? `계단 ${sm.stairs}곳` : '계단 없음'));
-    checks.push(h('span.check' + (sm.maxSlope <= 8 ? '.good' : ''), null, `최대 경사 ${sm.maxSlope.toFixed(0)}%`));
+    checks.push(steep.length ? h('span.check', null, `급경사 ${steep.length}곳 미리 알림`) : h('span.check.good', null, `최대 경사 ${sm.maxSlope.toFixed(0)}%`));
   }
   if (p.profile === 'blind') {
     checks.push(h('span.check.good', null, `보도 ${Math.round(sm.sidewalkShare * 100)}%`));
-    checks.push(h('span.check' + (sm.crossUnsig ? '' : '.good'), null, `신호 횡단 ${sm.crossSig} · 비신호 ${sm.crossUnsig}`));
+    checks.push(h('span.check' + (unsig.length ? '' : '.good'), null, unsig.length ? `비신호 횡단 ${unsig.length}곳 미리 알림` : '비신호 횡단 없음'));
   }
   if (p.profile === 'general') checks.push(h('span.check', null, fmtM(w.len)));
   if (sm.blockedNear === 0 && data_hasHazards()) checks.push(h('span.check.good', null, '제보된 파손 구간 피함'));
   const line = {
     general: p.night ? '밝은 길을 우선한 도보 경로예요.' : '가장 빠른 도보 경로예요.',
-    wheelchair: w.relaxed ? `경사 8%를 넘는 곳이 ${fmtM(sm.steepM)} 있어요. 도움이 필요할 수 있어요.` : '계단과 8%가 넘는 경사를 뺀 길이에요.',
-    blind: '보도와 신호 횡단보도 위주로 고른 길이에요. 음성으로 한 단계씩 안내해요.',
+    wheelchair: w.assist ? `휠체어로 혼자 가기 어려운 급경사(최대 ${Math.round(sm.maxSlope)}%)가 있어요. 동행이나 택시를 권하고, 급경사 50 m 앞에서 미리 알려 드려요.` : steep.length ? `피할 수 없는 급경사(1/12 초과)가 ${steep.length}곳, ${fmtM(steep.reduce((t, a) => t + a.len, 0))} 있어요. 50 m 앞에서 미리 알려 드려요.` : '계단과 1/12(8.3%)이 넘는 경사를 뺀 길이에요.',
+    blind: unsig.length ? '보도와 신호 횡단보도 위주로 고른 길이에요. 신호등 없는 횡단보도는 30 m 앞에서 미리 알려 드려요.' : '보도와 신호 횡단보도 위주로 고른 길이에요. 음성으로 한 단계씩 안내해요.',
     lowslope: w.relaxed ? `가파른 구간이 ${fmtM(sm.steepM)} 있어요. 쉬어 가세요.` : '오르막·내리막이 가장 적은 길이에요.',
   }[p.profile];
-  return h('section.hero' + (w.relaxed ? '.warn' : ''), null,
+  return h('section.hero' + (w.relaxed || steep.length && p.profile === 'wheelchair' ? '.warn' : ''), null,
     h('div.hero-eyebrow', null, `추천 · ${pr.label}`),
     h('div.hero-main', null, h('span.hero-min', null, Math.max(1, Math.round(w.sec / 60))), h('span.hero-unit', null, '분'), h('span.hero-meta', null, fmtM(w.len), h('br'), `안내 ${w.steps.length}단계`)),
     h('p.hero-line', null, line),

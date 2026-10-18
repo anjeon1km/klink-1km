@@ -2,7 +2,7 @@
 // 앱 개발안 3장 규칙: 출발·도착은 환승거점, 적색 구간은 지도에서 제외, 야간에는 야간 안심구간만 사용.
 import { PARAMS, isNightHour } from './params.js';
 import { buildAdjacency, nearestNode, dijkstra, pathTo, pathCoords, linkCoords, metres, mainComponentAccept } from './graph.js';
-import { F, CLS, linkGrade, safeCost, fastCost, walkCost, walkSeconds, speedFor, linkReasons, isNightSafeLink, WALK_PROFILES } from './grading.js';
+import { F, CLS, linkGrade, safeCost, fastCost, walkCost, walkSeconds, speedFor, linkReasons, isNightSafeLink, WALK_PROFILES, WHEELCHAIR_MAX_SLOPE } from './grading.js';
 import { netSavingPerKm } from './analysis.js';
 
 const HUB_RADIUS_WALK = 450; // m — 출발지·목적지에서 거점까지 걸을 수 있는 최대 직선거리
@@ -70,26 +70,70 @@ export class Planner {
       if (this.blocked?.has(link)) blockedNear++;
     }
     const cross = this.crossingsAlong(path);
+    const alerts = this.alertsAlong(path, profile);
     return {
       profile, path, coords: [[from.lat, from.lon], ...pathCoords(this.net, path), [to.lat, to.lon]], sec, len, litShare: len ? lit / len : 0,
       summary: { stairs, steepM, maxSlope, sharedShare: len ? sharedM / len : 0, sidewalkShare: len ? sidewalkM / len : 0, roughM, blockedNear, crossSig: cross.sig, crossUnsig: cross.unsig },
       steps: this.buildSteps(path),
+      alerts, pathLen: path.reduce((a, p) => a + L.len[p.link], 0),
     };
   }
 
   // crosswalk points (서울시 횡단보도 위치) within 12 m of the route's vertices
+  crosswalksNear(lat, lon, r) {
+    if (!this._cwGrid) { this._cwGrid = new Map(); this.crosswalks.forEach((c, i) => { const k = Math.floor(c[0] / 0.0003) + ':' + Math.floor(c[1] / 0.0004); if (!this._cwGrid.has(k)) this._cwGrid.set(k, []); this._cwGrid.get(k).push(i); }); }
+    const gi = Math.floor(lat / 0.0003), gj = Math.floor(lon / 0.0004); const out = [];
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (const i of this._cwGrid.get((gi + di) + ':' + (gj + dj)) || []) {
+      const c = this.crosswalks[i]; const d = metres(lat, lon, c[0], c[1]); if (d < r) out.push({ i, d });
+    }
+    return out;
+  }
   crossingsAlong(path) {
     if (!this.crosswalks?.length) return { sig: 0, unsig: 0, points: [] };
-    if (!this._cwGrid) { this._cwGrid = new Map(); this.crosswalks.forEach((c, i) => { const k = Math.floor(c[0] / 0.0003) + ':' + Math.floor(c[1] / 0.0004); if (!this._cwGrid.has(k)) this._cwGrid.set(k, []); this._cwGrid.get(k).push(i); }); }
     const seen = new Set();
-    for (const p of pathCoords(this.net, path)) {
-      const gi = Math.floor(p[0] / 0.0003), gj = Math.floor(p[1] / 0.0004);
-      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (const i of this._cwGrid.get((gi + di) + ':' + (gj + dj)) || []) {
-        const c = this.crosswalks[i]; if (!seen.has(i) && metres(p[0], p[1], c[0], c[1]) < 12) seen.add(i);
-      }
-    }
+    for (const p of pathCoords(this.net, path)) for (const { i } of this.crosswalksNear(p[0], p[1], 12)) seen.add(i);
     const pts = [...seen].map(i => this.crosswalks[i]);
     return { sig: pts.filter(c => c[2]).length, unsig: pts.filter(c => !c[2]).length, points: pts };
+  }
+
+  // 미리 알릴 지점 — 경로 시작에서 몇 m 지점인지(dist)와, 몇 m 앞에서 알릴지(lead):
+  // 횡단보도(서울시 횡단보도·보행등 위치, 경로 12 m 안) 30 m 앞, 계단 30 m 앞,
+  // 급경사(휠체어 1/12 초과, 그 밖 8% 초과 — 10 m 안에서 이어지면 한 구간) 50 m 앞.
+  alertsAlong(path, profile = 'general') {
+    const L = this.net.links;
+    const wheel = profile.startsWith('wheelchair');
+    const steepAt = wheel ? WHEELCHAIR_MAX_SLOPE : 8;
+    const out = []; const verts = []; let cum = 0, steep = null;
+    for (const { link, dir } of path) {
+      const c = linkCoords(this.net, link); const pts = dir === 1 ? c : c.slice().reverse();
+      let geo = 0; const at = [0];
+      for (let k = 1; k < pts.length; k++) { geo += metres(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1]); at.push(geo); }
+      const scale = geo > 0 ? L.len[link] / geo : 0;
+      pts.forEach((p, k) => { if (k > 0 || !verts.length) verts.push([p[0], p[1], cum + at[k] * scale]); });
+      const s = L.g[link] * dir;
+      if (L.cls[link] === CLS.STEPS) out.push({ kind: 'stairs', dist: cum, at: pts[0], lead: 30 });
+      if (Math.abs(s) > steepAt) {
+        if (steep && cum - steep.endDist < 10) { steep.endDist = cum + L.len[link]; steep.len = steep.endDist - steep.dist; if (Math.abs(s) > Math.abs(steep.slope)) steep.slope = s; }
+        else { steep = { kind: 'steep', dist: cum, endDist: cum + L.len[link], len: L.len[link], slope: s, at: pts[0], lead: 50 }; out.push(steep); }
+      }
+      cum += L.len[link];
+    }
+    if (this.crosswalks?.length) {
+      const best = new Map();
+      for (const v of verts) for (const { i, d } of this.crosswalksNear(v[0], v[1], 12)) if (!best.has(i) || d < best.get(i).d) best.set(i, { dist: v[2], d });
+      for (const [i, b] of best) { const c = this.crosswalks[i]; out.push({ kind: c[2] ? 'crossSig' : 'crossUnsig', dist: b.dist, at: [c[0], c[1]], lead: 30 }); }
+    }
+    out.sort((a, b) => a.dist - b.dist);
+    // 횡단보도 양 끝이 따로 찍힌 경우 등: 같은 종류가 25 m 안에 또 있으면 하나로
+    // 교차로에서 연달아 건너는 경우: 같은 종류가 40 m 안에 또 있으면 한 번에 "연달아 N곳"으로
+    const merged = [];
+    for (const a of out) {
+      if (a.kind === 'steep' && !wheel && a.len < 15) continue; // 휠체어가 아니면 아주 짧은 급경사는 알리지 않음
+      const p = [...merged].reverse().find(m => m.kind === a.kind);
+      if (p && a.kind !== 'steep' && a.dist - p.dist < 40) { p.count = (p.count || 1) + 1; continue; }
+      merged.push({ ...a });
+    }
+    return merged.map(a => ({ ...a, dist: Math.round(a.dist), len: a.len != null ? Math.round(a.len) : undefined, slope: a.slope != null ? Math.round(a.slope * 10) / 10 : undefined }));
   }
 
   // Turn-by-turn steps for voice guidance: group links by road name and heading; mark slopes, stairs, crossings, shared streets.
@@ -127,6 +171,7 @@ export class Planner {
       st.turnText = Math.abs(st.turn) < 35 ? '직진' : Math.abs(st.turn) > 150 ? '유턴' : st.turn > 0 ? '오른쪽' : '왼쪽';
     }
     if (merged[0]) merged[0].turnText = '출발';
+    let acc = 0; for (const st of merged) { st.startDist = acc; acc += st.len; } // 경로 시작에서 몇 m — 음성 안내의 위치 기준
     return merged;
   }
 
@@ -234,6 +279,10 @@ export class Planner {
       if (!out.walk && WALK_PROFILES[profile + 'Relaxed']) { // 기준을 지키는 길이 없으면 가장 완만한 길을 경고와 함께
         out.walk = this.walk(from, to, { night, profile: profile + 'Relaxed' });
         if (out.walk) out.walk.relaxed = true;
+      }
+      if (!out.walk && WALK_PROFILES[profile + 'Steep']) {
+        out.walk = this.walk(from, to, { night, profile: profile + 'Steep' });
+        if (out.walk) { out.walk.relaxed = true; out.walk.assist = true; }
       }
       out.walkGeneral = profile !== 'general' ? this.walk(from, to, { night, profile: 'general' }) : null;
       out.bus = this.bus(from, to, hour, night);

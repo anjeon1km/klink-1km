@@ -292,10 +292,11 @@ export class MapView {
       if (plan.profile && plan.profile !== 'pm') { // 교통약자·걷기 추천 경로: 굵은 실선 + 주의 지점
         add(casing(plan.walk.coords, 6));
         add(L.polyline(plan.walk.coords, { pane: 'routePane', color: css('--accent'), weight: 6, opacity: 1, interactive: false }));
-        for (const st of plan.walk.steps || []) {
-          const warn = st.stairs || st.crossUnsig || st.maxUp >= 5 || st.maxDown <= -5;
-          if (!warn) continue;
-          add(L.marker(st.at, { pane: 'hubPane', keyboard: false, interactive: false, icon: L.divIcon({ className: '', iconSize: [20, 20], html: '<div class="caution-pin">!</div>' }) }));
+        // 미리 알림 지점 (비신호 횡단보도·계단·급경사) — 음성 안내가 30~50 m 앞에서 알려 주는 곳
+        const pin = (at, cls, txt) => add(L.marker(at, { pane: 'hubPane', keyboard: false, interactive: false, icon: L.divIcon({ className: '', iconSize: [20, 20], html: `<div class="caution-pin ${cls}">${txt}</div>` }) }));
+        for (const a of plan.walk.alerts || []) {
+          if (a.kind === 'crossUnsig' || a.kind === 'stairs') pin(a.at, a.kind, '!');
+          else if (a.kind === 'steep') pin(a.at, 'steep', a.slope > 0 ? '↗' : '↘');
         }
         return;
       }
