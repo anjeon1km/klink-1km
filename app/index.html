@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>K-Link 1km</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<!--APP-->
+<div class="app" id="app" data-mode="citizen">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><span>1</span>km</span>
+      <span class="brand-text"><b>K-Link 1km</b><small>동대문구 · 안전한 마지막 1km</small></span>
+    </div>
+    <div class="seg" role="tablist" aria-label="화면 모드">
+      <button id="mode-citizen" role="tab" aria-selected="true" data-mode="citizen">시민 앱</button>
+      <button id="mode-policy" role="tab" aria-selected="false" data-mode="policy">정책 대시보드</button>
+    </div>
+    <div class="top-actions">
+      <button class="clock" id="clock-btn" aria-haspopup="dialog" aria-expanded="false" title="시각과 야간 모드">
+        <span class="clock-dot" aria-hidden="true"></span><span id="clock-text">--:--</span><span class="clock-mode" id="clock-mode">주간</span>
+      </button>
+      <button class="icon-btn" id="feedback-btn" title="팀 피드백" aria-label="팀 피드백 열기">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span class="badge" id="feedback-count" hidden>0</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="clock-pop" id="clock-pop" role="dialog" aria-label="시각 설정" hidden>
+    <div class="clock-pop-head">
+      <b>시연 시각</b>
+      <button class="link-btn" id="clock-now">지금 시각으로</button>
+    </div>
+    <label class="slider-row" for="clock-range"><span id="clock-range-label">08:40</span>
+      <input type="range" id="clock-range" min="0" max="1435" step="5" value="520">
+    </label>
+    <div class="clock-presets">
+      <button data-t="520">08:40 등교</button><button data-t="1050">17:30 하교</button><button data-t="1390">23:10 귀가</button><button data-t="85">01:25 심야</button>
+    </div>
+    <label class="check-row" for="night-auto"><input type="checkbox" id="night-auto" checked> 22시~05시에 야간 모드 자동 전환</label>
+    <label class="check-row" for="night-force"><input type="checkbox" id="night-force"> 지금 야간 모드로 보기</label>
+  </div>
+
+  <main class="layout">
+    <section class="panel" id="panel" aria-label="기능 패널">
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+      <div class="panel-body" id="panel-body"></div>
+    </section>
+    <section class="map-wrap" aria-label="지도">
+      <div id="map" class="map"></div>
+      <div class="map-ui map-ui-tr">
+        <button class="chip-btn" id="layers-btn" aria-expanded="false">레이어</button>
+        <div class="layers-pop" id="layers-pop" hidden></div>
+      </div>
+      <div class="map-legend" id="map-legend"></div>
+      <div class="map-hint" id="map-hint" hidden></div>
+      <div class="loading" id="loading"><div class="loading-bar"><span></span></div><p id="loading-text">동대문구 데이터를 불러오는 중…</p></div>
+    </section>
+  </main>
+
+  <aside class="drawer" id="feedback-drawer" aria-label="팀 피드백" hidden>
+    <div class="drawer-head">
+      <div><b>팀 피드백</b><small id="feedback-where">이 화면에 대한 의견을 남겨 주세요</small></div>
+      <button class="icon-btn" id="feedback-close" aria-label="피드백 닫기">✕</button>
+    </div>
+    <form id="feedback-form" class="feedback-form">
+      <label for="feedback-text" class="sr">피드백 내용</label>
+      <textarea id="feedback-text" rows="3" placeholder="예: 야간 경로 설명이 더 짧았으면 좋겠어요" required></textarea>
+      <div class="row-between"><small class="muted" id="feedback-store-note">이 기기에만 저장됩니다</small><button class="btn primary" type="submit">남기기</button></div>
+    </form>
+    <ol class="feedback-list" id="feedback-list"></ol>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" id="modal-card"></div></div>
+</div>
+<!--/APP-->
+<script src="vendor/leaflet.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

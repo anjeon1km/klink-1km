@@ -1,0 +1,7 @@
+node_modules/
+dist/
+config/sources.local.json
+.DS_Store
+Thumbs.db
+tools/_*.mjs
+.claude/

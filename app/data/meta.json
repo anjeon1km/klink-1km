@@ -1,0 +1,176 @@
+{
+ "builtAt": "2026-10-15T15:20:55.766Z",
+ "area": "서울특별시 동대문구",
+ "params": {
+  "grade": {
+   "downYellow": 5,
+   "downRed": 8,
+   "upYellow": 8,
+   "upRed": 15,
+   "slopeWindow": 30,
+   "crossYellowPer100m": 2,
+   "riskYellow": 0.5,
+   "mixedTrafficYellow": true,
+   "lightSafe": 0.7,
+   "cctvRadius": 100
+  },
+  "speed": {
+   "day": {
+    "G": 20,
+    "Y": 15,
+    "R": 10
+   },
+   "night": {
+    "G": 15,
+    "Y": 10,
+    "R": 10
+   },
+   "stationZone": 15,
+   "campusZone": 10,
+   "stationZoneM": 100
+  },
+  "weights": {
+   "s": 1,
+   "a": 1,
+   "x": 1,
+   "n": 1
+  },
+  "night": {
+   "start": 22,
+   "end": 5
+  },
+  "walkKmh": 4.8,
+  "pmAvgKmh": 13.5,
+  "pmUnlockMin": 1.5,
+  "pmParkMin": 0.5,
+  "busKmh": 15,
+  "tai": {
+   "busRadius": 640,
+   "railRadius": 960,
+   "reliability": {
+    "bus": 2,
+    "rail": 0.75
+   },
+   "headway": {
+    "trunk": 8,
+    "branch": 10,
+    "village": 8,
+    "express": 15,
+    "night": 30,
+    "circular": 10,
+    "line1": 5,
+    "line2": 5,
+    "line2b": 10,
+    "line4": 5,
+    "line5": 6,
+    "line6": 7,
+    "line7": 5,
+    "gyeongui": 12,
+    "suinbundang": 15,
+    "gyeongchun": 20,
+    "ui": 6
+   },
+   "lateFactor": 1.6,
+   "railLastHour": 24.5
+  },
+  "ptvi": {
+   "A": 0.3,
+   "R": 0.3,
+   "D": 0.2,
+   "C": 0.2
+  },
+  "typeCut": {
+   "high": 66.7,
+   "mid": 50,
+   "low": 33.3
+  },
+  "transfer": {
+   "windowMin": 30,
+   "hubRadiusM": 15,
+   "maxRideM": 2000,
+   "maxRideMin": 20,
+   "minTripM": 300,
+   "minTripMin": 2,
+   "dailyLimit": 4,
+   "stationNoHubM": 300,
+   "nightHours": [
+    22,
+    23,
+    0
+   ],
+   "lateNightHours": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "benefit": {
+    "unlockFee": 600,
+    "safeMileage": 500,
+    "nightSurcharge": 300,
+    "helmetMileage": 100
+   }
+  },
+  "pilot": {
+   "dailyRecognized": [
+    100,
+    150
+   ],
+   "avgBenefit": 800,
+   "semesterDays": 110,
+   "guShare": 0.5
+  },
+  "carbon": {
+   "ef": {
+    "pmNow": 125.5,
+    "pmImproved": 67.2,
+    "car": 257.2,
+    "bus": 51
+   },
+   "replace": {
+    "car": 0.37,
+    "transit": 0.1,
+    "active": 0.53
+   },
+   "replaceVulnerable": {
+    "car": 0.5,
+    "transit": 0.1,
+    "active": 0.4
+   },
+   "pmAvgKm": 1.01
+  }
+ },
+ "counts": {
+  "nodes": 18793,
+  "links": 22048,
+  "cells": 245,
+  "hubs": 98,
+  "busStops": 394,
+  "stations": 12,
+  "crosswalks": 2302,
+  "lights": 2020,
+  "cctv": 1367,
+  "cctvCameras": 4305,
+  "securityLights": 0,
+  "population": 362724
+ },
+ "accidentSource": "taas",
+ "sources": {
+  "cctv": true,
+  "securityLights": false,
+  "bikeMaster": true,
+  "population": true,
+  "populationYear": "2024",
+  "pmAccidents": true,
+  "subwayStations": 12
+ },
+ "bikePeriod": {
+  "from": "20260901",
+  "to": "20261002",
+  "files": 31,
+  "effectiveDays": 28.7,
+  "weekdays": 19.9,
+  "weekendHolidays": 8.8
+ },
+ "busMonth": "2022-05"
+}

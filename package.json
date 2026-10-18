@@ -1,0 +1,24 @@
+{
+  "name": "klink-1km-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "K-Link 1km · 안전한 1km — 동대문구 PM–대중교통 환승취약지역 분석 및 안전 환승 앱 프로토타입",
+  "type": "module",
+  "scripts": {
+    "fetch:osm": "node pipeline/01_fetch_osm.js",
+    "fetch:taas": "node pipeline/fetch_taas.js",
+    "extract": "node pipeline/02_extract_raw.js",
+    "build": "node pipeline/03_build_app_data.js",
+    "all": "node pipeline/01_fetch_osm.js && node pipeline/02_extract_raw.js && node pipeline/03_build_app_data.js",
+    "check": "node tools/check_build.js",
+    "test": "node tools/test_core.js",
+    "serve": "node tools/serve.js",
+    "artifact": "node tools/make_artifact.js"
+  },
+  "dependencies": {
+    "iconv-lite": "0.6.3",
+    "proj4": "2.11.0",
+    "shapefile": "0.6.6",
+    "xlsx": "0.18.5"
+  }
+}
