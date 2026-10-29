@@ -102,7 +102,7 @@ function renderCitizenLegend() {
 function applyClock() {
   const night = isNight();
   $('#clock-text').textContent = fmtClock(state.minutes);
-  $('#clock-mode').textContent = state.live ? `실시간 · ${night ? '야간' : '주간'}` : night ? '야간' : '주간';
+  $('#clock-mode').textContent = state.live ? '실시간' : night ? '야간' : '주간'; // 실시간이면 낮밤은 지도 색으로 구분
   $('#clock-btn').classList.toggle('live', state.live); $('#live-toggle').checked = state.live;
   $('#clock-range').value = state.minutes; $('#clock-range-label').textContent = fmtClock(state.minutes);
   $('#night-auto').checked = state.nightAuto; $('#night-force').checked = state.nightForce;
