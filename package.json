@@ -13,7 +13,8 @@
     "check": "node tools/check_build.js",
     "test": "node tools/test_core.js",
     "serve": "node tools/serve.js",
-    "artifact": "node tools/make_artifact.js"
+    "artifact": "node tools/make_artifact.js",
+    "pwa": "node tools/make_pwa.js"
   },
   "dependencies": {
     "iconv-lite": "0.6.3",

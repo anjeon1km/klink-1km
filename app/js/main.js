@@ -1,5 +1,5 @@
 // Bootstrap: load data → map → tabs (시민 앱 / 정책 대시보드) → clock & night mode → layers → team feedback.
-import { h, $, clear, toast, fmtClock, fmtDate } from './ui/dom.js';
+import { h, $, clear, toast, modal, fmtClock, fmtDate } from './ui/dom.js';
 import { state, set, on, isNight, prefs } from './state.js';
 import { loadData } from './data.js';
 import { store } from './store.js';
@@ -36,7 +36,7 @@ async function boot() {
     map.onHubClick = hb => { set({ selectedHub: hb.id }); if (state.mode !== 'citizen') setMode('citizen', false); goTab('hubs'); };
     map.onWalkMode = () => { if (state.mode === 'citizen') renderCitizenLegend(); };
     $('#loading').hidden = true;
-    wireTop(); wireFont(); wireLayers(); wireFeedback();
+    wireTop(); wireFont(); wireLayers(); wireFeedback(); wireInstall();
     store.subscribe('reports', list => map.showReports(list.filter(r => r.cat), r => { map.map.openPopup(popupFor(r), [r.lat, r.lon]); }));
     store.onMode(mode => { $('#feedback-store-note').textContent = mode === 'local' ? '이 기기에만 저장됩니다' : '팀원 모두에게 보입니다'; current?.refresh?.(); });
     applyClock();
@@ -141,6 +141,27 @@ function wireFont() {
     level = applyFont((level + 1) % FONT_LEVELS.length); prefs.set('fontLevel', level);
     toast(`글자 크기: ${FONT_LEVELS[level].name}`);
     setTimeout(() => app.map.map.invalidateSize(), 50); // 넓어진 패널만큼 지도 크기 다시 계산
+  };
+}
+
+// ── 앱 설치 (설치형 웹앱): manifest가 있는 공개 주소(GitHub Pages)에서만 — 팀 공유 링크(아티팩트)에서는 꺼짐
+function wireInstall() {
+  if (!document.querySelector('link[rel="manifest"]')) return;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('서비스 워커 등록 실패', e));
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (standalone || prefs.get('installDismissed', false)) return;
+  const bar = $('#install-bar');
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; bar.hidden = false; });
+  window.addEventListener('appinstalled', () => { bar.hidden = true; toast('안키로를 설치했어요. 홈 화면에서 열 수 있어요.'); });
+  if (ios) bar.hidden = false; // 아이폰·아이패드는 설치 창이 없어서 방법을 안내
+  $('#install-close').onclick = () => { bar.hidden = true; prefs.set('installDismissed', true); };
+  $('#install-go').onclick = async () => {
+    if (deferred) { deferred.prompt(); const { outcome } = await deferred.userChoice; deferred = null; if (outcome === 'accepted') bar.hidden = true; return; }
+    const steps = ios ? ['사파리 아래쪽의 공유 버튼(네모에 위 화살표)을 누르세요.', '목록에서 「홈 화면에 추가」를 누르세요.', '오른쪽 위 「추가」를 누르면 홈 화면에 안키로가 생겨요.']
+      : ['크롬 오른쪽 위 메뉴(⋮)를 누르세요.', '「앱 설치」 또는 「홈 화면에 추가」를 누르세요.', '「설치」를 누르면 홈 화면에 안키로가 생겨요.'];
+    modal([h('h3', null, '홈 화면에 안키로 추가'), h('ol', { style: { margin: '8px 0 0', paddingLeft: '20px', display: 'grid', gap: '6px', fontSize: '15px' } }, steps.map(t => h('li', null, t)))]);
   };
 }
 

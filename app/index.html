@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>안키로 · 안전한 1키로</title>
+<meta name="description" content="동대문구 역·정류장에서 목적지까지 남은 1km를 안전하게 — PM 환승 경로, 교통약자 경로와 음성 안내">
+<meta name="theme-color" content="#0052a4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="안키로">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230052a4'/%3E%3Cpath d='M10 30.5C16 30.5 16 21 21.5 21S27 15 29 13' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-dasharray='.01 4.6'/%3E%3Ccircle cx='10' cy='30.5' r='3.4' fill='%23fff'/%3E%3Cpath d='M29.5 3.5a5.6 5.6 0 0 0-5.6 5.6c0 4 5.6 9.4 5.6 9.4s5.6-5.4 5.6-9.4a5.6 5.6 0 0 0-5.6-5.6z' fill='%23ffd23f'/%3E%3Ccircle cx='29.5' cy='9.1' r='2' fill='%230052a4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +95,12 @@
     </form>
     <ol class="feedback-list" id="feedback-list"></ol>
   </aside>
+  <div class="install-bar" id="install-bar" role="region" aria-label="앱 설치" hidden>
+    <img src="icons/icon-192.png" alt="" width="36" height="36">
+    <span><b>안키로를 앱으로 설치</b><small>홈 화면에서 바로 열리고, 인터넷이 없어도 길찾기를 볼 수 있어요</small></span>
+    <button class="btn primary small" id="install-go" type="button">설치</button>
+    <button class="icon-btn" id="install-close" type="button" aria-label="설치 안내 닫기">✕</button>
+  </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" id="modal-card"></div></div>
 </div>

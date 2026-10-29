@@ -30,7 +30,7 @@ const copy = (rel) => {
   if (fs.statSync(src).isDirectory()) { for (const f of fs.readdirSync(src)) copy(path.join(rel, f)); return; }
   fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.copyFileSync(src, dst); files.push(rel.split(path.sep).join('/'));
 };
-['css', 'js', 'data', 'vendor/leaflet.css'].forEach(copy);
+['css', 'js', 'data', 'vendor/leaflet.css', 'icons/icon-192.png'].forEach(copy);
 fs.writeFileSync(path.join(OUT, 'files.json'), JSON.stringify(files, null, 1));
 const size = files.reduce((a, f) => a + fs.statSync(path.join(OUT, f)).size, 0);
 console.log(`dist/artifact: index.html + ${files.length} files (${(size / 1024 / 1024).toFixed(1)} MB)`);

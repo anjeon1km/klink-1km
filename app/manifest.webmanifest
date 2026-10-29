@@ -1,0 +1,20 @@
+{
+  "name": "안키로 · 안전한 1키로",
+  "short_name": "안키로",
+  "description": "동대문구 역·정류장에서 목적지까지 남은 1km를 안전하게 — PM 환승 경로, 교통약자 경로와 음성 안내",
+  "lang": "ko",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eceff2",
+  "theme_color": "#0052a4",
+  "categories": ["navigation", "travel", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
