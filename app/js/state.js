@@ -8,6 +8,7 @@ export const state = {
   minutes: 8 * 60 + 40,     // 시연 시각 (분)
   nightAuto: true,
   nightForce: false,
+  live: false,              // 실시간 모드: 지금 시각 + 날씨·따릉이 실시간 정보
   trip: null,               // { from, to, result, choice }
   ride: null,               // active ride simulation
   selectedCell: null,

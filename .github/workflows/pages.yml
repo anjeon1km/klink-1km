@@ -1,11 +1,14 @@
 # app/ 폴더를 GitHub Pages(https://anjeon1km.github.io/klink-1km/)에 올립니다.
-# main 브랜치에 app/ 변경이 올라오면 자동으로 다시 배포됩니다.
+# · main 브랜치에 app/ 변경이 올라오면 다시 배포
+# · 15분마다: 저장소 비밀값 SEOUL_API_KEY가 있으면 따릉이 실시간 대여정보를 받아 live/bike.json으로 함께 배포
 name: Deploy app to GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ['app/**', '.github/workflows/pages.yml']
+    paths: ['app/**', 'tools/fetch_live.js', '.github/workflows/pages.yml']
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -18,13 +21,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 15분마다 도는 실행은 인증키(SEOUL_API_KEY)가 있을 때만 배포 — 없으면 여기서 끝
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          HAS_KEY: ${{ secrets.SEOUL_API_KEY != '' }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$HAS_KEY" != "true" ]; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
+
   deploy:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 따릉이 실시간 대여정보 받기
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        run: node tools/fetch_live.js app/live
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

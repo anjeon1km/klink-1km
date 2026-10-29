@@ -2,6 +2,7 @@
 import { h, clear, fmtM, fmtN, toast } from '../dom.js';
 import { state, set, hour, isNight } from '../../state.js';
 import { metres } from '../../core/graph.js';
+import { bikesNear, agoText, live, onLive } from '../../live.js';
 
 // 정책안 3장 '환승거점 등급'
 const GRADE_TEXT = { A: 'A 역 환승거점', B: 'B 목적지 거점', C: 'C 보조거점' };
@@ -53,6 +54,7 @@ export function renderHubs(app, body) {
         h('span.check', null, `빈 자리 ${av.free} / ${hb.slots}`),
         h('span.check', null, `기기 ${av.used}대`),
         hb.nightSafe ? h('span.check.good', null, '야간 안심') : null,
+        (() => { const b = state.live ? bikesNear(hb.lat, hb.lon, 200)[0] : null; return b ? h('span.check' + (b.bikes ? '.good' : ''), { title: `${b.name} · ${agoText(live.bikeAt)}` }, `따릉이 ${b.bikes}대 (실시간)`) : null; })(),
         wcExits.length ? h('span.check.good', null, `휠체어 출구 ${wcExits.join('·')}번`) : null),
       hb.note ? h('p.hero-sub', null, hb.note) : null,
       h('div.btn-row', null,
@@ -71,5 +73,6 @@ export function renderHubs(app, body) {
 
   if (state.selectedHub) { const s = data.hubById.get(state.selectedHub); if (s) map.flyTo(s.lat, s.lon, 16.5); }
   draw();
-  return { refresh: draw };
+  const unLive = onLive(() => { if (state.selectedHub) draw(); });
+  return { refresh: draw, dispose: unLive };
 }

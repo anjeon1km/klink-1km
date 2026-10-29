@@ -1,6 +1,6 @@
 // 시민 앱 · 길찾기: 한 화면에 '추천 하나'만 크게. 다른 방법은 한 줄씩, 자세한 근거는 접어 둡니다.
 // 이동 방식: PM 환승 · 걷기 · 휠체어 · 시각장애 · 경사 적게 (교통약자 보행 경로 + 음성 안내)
-import { h, clear, fmtMin, fmtM, fmtN, fmtClock, gradeChip } from '../dom.js';
+import { h, clear, fmtMin, fmtM, fmtN, fmtClock, gradeChip, toast } from '../dom.js';
 import { gradeBar } from '../charts.js';
 import { state, set, hour, isNight } from '../../state.js';
 import { searchPlaces, cellAt } from '../../data.js';
@@ -10,6 +10,8 @@ import { store } from '../../store.js';
 import { startGuide } from './guide.js';
 import { stepTitle, stepCautions, alertsFor } from './steps.js';
 import { ICON } from '../icons.js';
+import { live, conditions, weatherLabel, airGrade, bikesNear, agoText, onLive } from '../../live.js';
+import { locateOnce, startWatch, geoErrorText, distanceOutside } from '../../geo.js';
 
 const SCENARIOS = [
   { id: 'A', label: '평일 아침 통학 · 회기역 → 캠퍼스 상부', time: 520, from: 'H1', to: 'H3', profile: 'pm' },
@@ -36,7 +38,7 @@ export function renderRoute(app, body) {
 
   const replan = (fit = false) => {
     if (!trip.from || !trip.to) return;
-    trip.plan = data.planner.plan({ from: trip.from, to: trip.to, hour: hour(), forceNight: isNight(), profile: trip.profile });
+    trip.plan = data.planner.plan({ from: trip.from, to: trip.to, hour: hour(), forceNight: isNight(), profile: trip.profile, weather: state.live ? conditions() : null });
     trip.choice = 'main';
     map.setWalkMode(trip.profile !== 'pm');
     showOnMap();
@@ -70,6 +72,7 @@ export function renderRoute(app, body) {
     const p = trip.plan;
     body.append(h('section.block', null,
       h('div.od', null, ...odField('from'), ...odField('to')),
+      h('button.btn.small.ghost.my-loc', { type: 'button', onclick: useMyLocation }, h('span', { html: ICON.pin }), trip.from?.label === '내 위치' ? ' 내 위치 다시 찾기' : ' 내 위치에서 출발'),
       h('div.row-between', null,
         h('select.input.select-quiet', { id: 'scenario', 'aria-label': '예시 경로', onchange: e => { const s = SCENARIOS.find(x => x.id === e.target.value); if (!s) return; set({ minutes: s.time }, 'clock'); trip.from = place(s.from); trip.to = place(s.to); trip.profile = s.profile; replan(true); draw(); } },
           h('option', { value: '' }, '예시 경로 고르기'), SCENARIOS.map(s => h('option', { value: s.id }, s.label))),
@@ -81,10 +84,25 @@ export function renderRoute(app, body) {
         h('span.profile-ico', { html: ICON[pr.icon] }), h('span', null, pr.label))))));
 
     if (!p) { body.append(h('p.empty', null, '출발지와 목적지를 고르면 가장 알맞은 방법 하나를 추천해 드립니다.')); return; }
+    if (state.live) body.append(liveStrip(trip));
     if (p.night) body.append(nightStrip(p, data));
     body.append(p.profile === 'pm' ? pmHero(p, app) : walkHero(p, app, map));
     body.append(alternatives(p));
     body.append(moreDetails(p, data));
+  }
+
+  // ── 내 위치(GPS)를 출발지로
+  async function useMyLocation(e) {
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const p = await locateOnce();
+      const out = distanceOutside(map.areaBounds(), p.lat, p.lon);
+      if (out > 400) { toast(`지금 위치가 동대문구에서 약 ${(out / 1000).toFixed(1)} km 떨어져 있어요. 동대문구 안에서 출발지를 골라 주세요.`, 4200); return; }
+      trip.from = { lat: p.lat, lon: p.lon, label: '내 위치' };
+      startWatch(); map.setMyLocation(p);
+      replan(true); draw();
+    } catch (err) { toast(geoErrorText(err), 4200); }
+    finally { btn.disabled = false; }
   }
 
   // ── 다른 방법: 한 줄씩
@@ -100,15 +118,24 @@ export function renderRoute(app, body) {
     return rows.length ? h('section.block', null, h('h3.block-title', null, '다른 방법'), h('div.alt-list', null, rows)) : h('div');
   }
 
+  // 실시간 날씨가 바뀌면(비 시작 등) 다시 계산
+  let lastWx = JSON.stringify(conditions());
+  const unLive = onLive(() => { if (app.guiding || !state.live) return; const now = JSON.stringify(conditions()); if (now !== lastWx) { lastWx = now; replan(); } draw(); });
   unsub = store.subscribe('reports', list => { const n = data.planner.setHazards(list); if (trip.plan && trip.profile !== 'pm' && n) { replan(); draw(); } });
   if (!state.trip.plan) replan(true); else { map.setWalkMode(trip.profile !== 'pm'); showOnMap(); map.setPins(trip.from, trip.to, (which, p) => { trip[which] = p; replan(); draw(); }); }
   draw();
-  return { refresh: () => { if (app.guiding) return; replan(); draw(); }, dispose: () => { unsub?.(); app.guiding = false; } };
+  return { refresh: () => { if (app.guiding) return; replan(); draw(); }, dispose: () => { unsub?.(); unLive(); app.guiding = false; } };
 }
 
 // ── PM 추천 카드
 function pmHero(p, app) {
   const pm = p.pm;
+  if (p.weatherNoPm) {
+    return h('section.hero.warn', null,
+      h('div.hero-eyebrow', null, '실시간 · PM 비권장'),
+      h('p.hero-line', null, p.weatherNoPm),
+      h('p.hero-sub', null, '아래의 걷기나 버스를 이용하세요. 길이 녹으면 다시 PM 경로를 안내해요.'));
+  }
   if (!pm) {
     return h('section.hero.warn', null,
       h('div.hero-eyebrow', null, 'PM 경로 없음'),
@@ -128,7 +155,7 @@ function pmHero(p, app) {
     pm.walkFirstNote ? h('p.hero-sub', null, pm.walkFirstNote) : null,
     h('div.hero-checks', null,
       h('span.check', null, `적색 ${s.byGrade.R ? fmtM(s.byGrade.R) : '없음'}`),
-      h('span.check', null, `권장 ${p.night ? PARAMS.speed.night.G : PARAMS.speed.day.G} km/h`),
+      h('span.check' + (p.ctx?.slow ? '.warn' : ''), null, `권장 ${p.night || p.ctx?.slow ? PARAMS.speed.night.G : PARAMS.speed.day.G} km/h${p.ctx?.slow && !p.night ? ` (${p.weather.why})` : ''}`),
       pm.transferEligible ? h('span.check.good', null, '환승 혜택 대상') : h('span.check', null, '환승 혜택 없음')),
     h('button.btn.primary.big', { type: 'button', onclick: () => app.goTab('ride') }, '대여하러 가기'));
 }
@@ -160,9 +187,30 @@ function walkHero(p, app, map) {
     h('div.hero-eyebrow', null, `추천 · ${pr.label}`),
     h('div.hero-main', null, h('span.hero-min', null, Math.max(1, Math.round(w.sec / 60))), h('span.hero-unit', null, '분'), h('span.hero-meta', null, fmtM(w.len), h('br'), `안내 ${w.steps.length}단계`)),
     h('p.hero-line', null, line),
+    p.weather && (p.weather.wet || p.weather.snow) ? h('p.hero-sub', null, `실시간 ${p.weather.why}: 경사로·계단·횡단보도가 미끄러워요. 천천히 가세요.`) : null,
     h('div.hero-checks', null, checks.slice(0, 3)),
     h('button.btn.primary.big', { type: 'button', onclick: () => startGuide(app, w, p) }, h('span', { html: ICON.speaker }), ' 음성 안내 시작'));
   function data_hasHazards() { return app.data.planner.blocked?.size > 0 && (p.profile === 'wheelchair' || p.profile === 'blind'); }
+}
+
+// ── 실시간: 한 줄 띠 — 날씨·미세먼지·출발지 근처 따릉이 (펼치면 자세히)
+function liveStrip(trip) {
+  const w = live.weather;
+  if (!w) return h('p.live-strip.muted', null, h('span.pill.live', null, '실시간'), live.online ? ' 실시간 정보를 불러오는 중…' : ' 인터넷이 연결되면 날씨·따릉이 정보를 보여 드려요.');
+  const c = conditions(), air = airGrade();
+  const bikes = trip.from ? bikesNear(trip.from.lat, trip.from.lon, 250) : [];
+  const bits = [`${weatherLabel(w.weather_code)} ${Math.round(w.temperature_2m)}°C`];
+  if (air) bits.push(`미세먼지 ${air.name}`);
+  if (bikes.length) bits.push(`근처 따릉이 ${bikes[0].bikes}대`);
+  const sunset = live.daily?.sunset?.[0]?.slice(11, 16);
+  return h('details.live-strip' + (c?.slow ? '.warn' : ''), null,
+    h('summary', null, h('span.pill.live', null, '실시간'), ' ', bits.join(' · '), c?.slow ? h('b', null, ` — ${c.noPm ? 'PM 비권장' : 'PM 속도 한 단계 낮춤'}`) : null),
+    h('ul.list', null,
+      h('li', null, `날씨 ${weatherLabel(w.weather_code)}, ${w.temperature_2m.toFixed(1)}°C, 바람 ${Math.round(w.wind_speed_10m)} km/h, 강수 ${w.precipitation} mm${c?.why ? ` → ${c.why}` : ''}`),
+      air ? h('li', null, `미세먼지(PM10) ${air.pm10} · 초미세먼지(PM2.5) ${air.pm25} μg/m³ — ${air.name}${air.level >= 2 ? ' (마스크를 권해요)' : ''}`) : null,
+      sunset ? h('li', null, `오늘 해 지는 시각 ${sunset} — 이후에는 밝은 길 위주로 안내해요`) : null,
+      bikes.length ? h('li', null, `따릉이 ${bikes.slice(0, 2).map(b => `${b.name.replace(/^d+.s*/, '')} ${b.bikes}대`).join(', ')} (${agoText(live.bikeAt)})`) : h('li', null, live.bike ? '출발지 250 m 안에 따릉이 대여소가 없어요' : '따릉이 실시간 대수는 자동 갱신이 켜지면 보여요')),
+    h('small.muted', null, `날씨 ${agoText(live.weatherAt)} · Open-Meteo${live.bike ? ` · 따릉이 ${agoText(live.bikeAt)} · 서울 열린데이터광장` : ''}`));
 }
 
 // ── 야간: 한 줄 띠 (펼치면 자세히)

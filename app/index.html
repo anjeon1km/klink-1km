@@ -52,6 +52,7 @@
   </header>
 
   <div class="clock-pop" id="clock-pop" role="dialog" aria-label="시각 설정" hidden>
+    <label class="check-row live-row" for="live-toggle"><input type="checkbox" id="live-toggle"> <b>실시간</b> — 지금 시각과 날씨·따릉이 정보로 보기</label>
     <div class="clock-pop-head">
       <b>시연 시각</b>
       <button class="link-btn" id="clock-now">지금 시각으로</button>
@@ -74,7 +75,10 @@
     <section class="map-wrap" aria-label="지도">
       <div id="map" class="map"></div>
       <div class="map-ui map-ui-tr">
-        <button class="chip-btn" id="layers-btn" aria-expanded="false">레이어</button>
+        <div class="map-ui-row">
+          <button class="chip-btn" id="locate-btn" type="button" aria-label="지도에 내 위치 보기">◎ 내 위치</button>
+          <button class="chip-btn" id="layers-btn" aria-expanded="false">레이어</button>
+        </div>
         <div class="layers-pop" id="layers-pop" hidden></div>
       </div>
       <div class="map-legend" id="map-legend"></div>

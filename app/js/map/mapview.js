@@ -335,6 +335,16 @@ export class MapView {
     }
   }
 
+  // ── 내 위치 (GPS): 파란 점 + 정확도 원
+  areaBounds() { const b = this.districtBounds(); return { s: b.getSouth(), n: b.getNorth(), w: b.getWest(), e: b.getEast() }; }
+  setMyLocation(p) {
+    if (!this.meLayer) this.meLayer = L.layerGroup().addTo(this.map);
+    this.meLayer.clearLayers();
+    if (!p) return;
+    if (p.acc) this.meLayer.addLayer(L.circle([p.lat, p.lon], { radius: Math.min(p.acc, 300), pane: 'routePane', color: '#2a78d6', weight: 1, opacity: 0.5, fillColor: '#2a78d6', fillOpacity: 0.12, interactive: false }));
+    this.meLayer.addLayer(L.circleMarker([p.lat, p.lon], { radius: 8, pane: 'hubPane', color: '#ffffff', weight: 3, fillColor: '#2a78d6', fillOpacity: 1, interactive: false }));
+  }
+
   // ── ride marker
   setRider(latlng) {
     if (!latlng) { this.rider?.remove(); this.rider = null; return; }

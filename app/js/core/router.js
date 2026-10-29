@@ -209,7 +209,7 @@ export class Planner {
     const segs = []; const steps = [];
     for (const { link, dir } of path) {
       const g = linkGrade(this.net, link, dir, ctx);
-      const v = speedFor(g === 'X' ? 'R' : g, ctx.night, this.net, link);
+      const v = speedFor(g === 'X' ? 'R' : g, ctx.night || ctx.slow, this.net, link); // 야간·비·눈·강풍이면 한 단계 낮게
       const l = L.len[link]; len += l; sec += l / (v / 3.6); byGrade[g] += l; cross += L.x[link] > 0 ? 1 : 0;
       const s = L.g[link] * dir; maxUp = Math.max(maxUp, s); maxDown = Math.min(maxDown, s);
       const name = L.name[link] >= 0 ? names[L.name[link]] : (L.cls[link] === CLS.CYCLEWAY ? '자전거도로' : '이름 없는 길');
@@ -270,10 +270,11 @@ export class Planner {
   }
 
   // profile: 'pm' (PM 환승, 기본) | 'general' (걷기) | 'wheelchair' | 'blind' | 'lowslope'
-  plan({ from, to, hour = new Date().getHours(), forceNight = null, weights = null, litOnly = true, useOverrides = true, profile = 'pm' }) {
+  // weather: 실시간 길 상태 { slow, noPm, why } (live.js conditions) — 없으면 예측치만으로 계산
+  plan({ from, to, hour = new Date().getHours(), forceNight = null, weights = null, litOnly = true, useOverrides = true, profile = 'pm', weather = null }) {
     const night = forceNight ?? isNightHour(hour);
-    const ctx = { ...this.ctx({ night, weights, useOverrides }), litOnly };
-    const out = { from, to, hour, night, ctx, profile };
+    const ctx = { ...this.ctx({ night, weights, useOverrides }), litOnly, slow: !!weather?.slow };
+    const out = { from, to, hour, night, ctx, profile, weather };
     if (profile !== 'pm') { // 걷기·교통약자: PM 없이 보행 경로 + 버스
       out.walk = this.walk(from, to, { night, profile });
       if (!out.walk && WALK_PROFILES[profile + 'Relaxed']) { // 기준을 지키는 길이 없으면 가장 완만한 길을 경고와 함께
@@ -351,6 +352,7 @@ export class Planner {
     }
     // recommendation
     out.recommend = !pm ? (night ? 'walk-or-taxi' : 'walk') : (night && pm.safe.byGrade.Y > pm.safe.len * 0.6 ? 'pm-caution' : 'pm');
+    if (weather?.noPm) { out.weatherNoPm = `${weather.why} — 오늘은 PM 대신 걷기나 버스를 권해요.`; out.recommend = night ? 'walk-or-taxi' : 'walk'; }
     return out;
   }
 }

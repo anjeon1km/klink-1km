@@ -12,7 +12,7 @@ const files = [];
   for (const f of fs.readdirSync(path.join(APP, rel), { withFileTypes: true })) {
     const r = rel ? `${rel}/${f.name}` : f.name;
     if (f.isDirectory()) walk(r);
-    else if (!SKIP.has(r) && !/LICENSE|\.map$/.test(f.name)) files.push(r);
+    else if (!SKIP.has(r) && !r.startsWith('live/') && !/LICENSE|\.map$/.test(f.name)) files.push(r); // live/는 배포 때 만들어지는 실시간 파일
   }
 })('');
 files.sort();

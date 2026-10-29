@@ -1,8 +1,10 @@
 // Bootstrap: load data → map → tabs (시민 앱 / 정책 대시보드) → clock & night mode → layers → team feedback.
 import { h, $, clear, toast, modal, fmtClock, fmtDate } from './ui/dom.js';
-import { state, set, on, isNight, prefs } from './state.js';
+import { state, set, on, isNight, hour, prefs } from './state.js';
 import { loadData } from './data.js';
 import { store } from './store.js';
+import { startLive, stopLive } from './live.js';
+import { geo, onGeo, locateOnce, startWatch, geoErrorText, distanceOutside } from './geo.js';
 import { MapView } from './map/mapview.js';
 import { renderRoute } from './ui/citizen/route.js';
 import { renderHubs } from './ui/citizen/hubs.js';
@@ -36,9 +38,10 @@ async function boot() {
     map.onHubClick = hb => { set({ selectedHub: hb.id }); if (state.mode !== 'citizen') setMode('citizen', false); goTab('hubs'); };
     map.onWalkMode = () => { if (state.mode === 'citizen') renderCitizenLegend(); };
     $('#loading').hidden = true;
-    wireTop(); wireFont(); wireLayers(); wireFeedback(); wireInstall();
+    wireTop(); wireFont(); wireLayers(); wireFeedback(); wireInstall(); wireLocate();
     store.subscribe('reports', list => map.showReports(list.filter(r => r.cat), r => { map.map.openPopup(popupFor(r), [r.lat, r.lon]); }));
     store.onMode(mode => { $('#feedback-store-note').textContent = mode === 'local' ? '이 기기에만 저장됩니다' : '팀원 모두에게 보입니다'; current?.refresh?.(); });
+    setLive(prefs.get('live', !!document.querySelector('link[rel="manifest"]')), false); // 공개 주소·설치 앱은 처음부터 실시간
     applyClock();
     setMode(state.mode, false);
     const hash = location.hash.slice(1);
@@ -99,7 +102,8 @@ function renderCitizenLegend() {
 function applyClock() {
   const night = isNight();
   $('#clock-text').textContent = fmtClock(state.minutes);
-  $('#clock-mode').textContent = night ? '야간' : '주간';
+  $('#clock-mode').textContent = state.live ? `실시간 · ${night ? '야간' : '주간'}` : night ? '야간' : '주간';
+  $('#clock-btn').classList.toggle('live', state.live); $('#live-toggle').checked = state.live;
   $('#clock-range').value = state.minutes; $('#clock-range-label').textContent = fmtClock(state.minutes);
   $('#night-auto').checked = state.nightAuto; $('#night-force').checked = state.nightForce;
   const changed = app.map.night !== night;
@@ -114,13 +118,14 @@ function wireTop() {
   btn.onclick = () => { pop.hidden = !pop.hidden; btn.setAttribute('aria-expanded', String(!pop.hidden)); };
   document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
   let t;
-  const update = (mins, now = false) => { state.minutes = mins; prefs.set('minutes', mins); applyClock(); clearTimeout(t); t = setTimeout(() => current?.refresh?.(), now ? 0 : 250); };
+  const update = (mins, now = false) => { if (state.live) setLive(false, false); state.minutes = mins; prefs.set('minutes', mins); applyClock(); clearTimeout(t); t = setTimeout(() => current?.refresh?.(), now ? 0 : 250); };
   $('#clock-range').oninput = e => update(+e.target.value);
-  $('#clock-now').onclick = () => { const d = new Date(); update(d.getHours() * 60 + d.getMinutes(), true); };
+  $('#clock-now').onclick = () => setLive(true);
+  $('#live-toggle').onchange = e => setLive(e.target.checked);
   pop.querySelectorAll('[data-t]').forEach(b => { b.onclick = () => update(+b.dataset.t, true); });
   $('#night-auto').onchange = e => { state.nightAuto = e.target.checked; update(state.minutes, true); };
   $('#night-force').onchange = e => { state.nightForce = e.target.checked; update(state.minutes, true); };
-  on('clock', () => { prefs.set('minutes', state.minutes); applyClock(); });
+  on('clock', () => { if (state.live) { setLive(false, false); toast('예시 경로의 시각으로 바꿔 실시간을 껐어요'); } prefs.set('minutes', state.minutes); applyClock(); });
 }
 
 // ── 글자 크기 (어르신용): 보통 → 크게 → 아주 크게 → 보통
@@ -162,6 +167,41 @@ function wireInstall() {
     const steps = ios ? ['사파리 아래쪽의 공유 버튼(네모에 위 화살표)을 누르세요.', '목록에서 「홈 화면에 추가」를 누르세요.', '오른쪽 위 「추가」를 누르면 홈 화면에 안키로가 생겨요.']
       : ['크롬 오른쪽 위 메뉴(⋮)를 누르세요.', '「앱 설치」 또는 「홈 화면에 추가」를 누르세요.', '「설치」를 누르면 홈 화면에 안키로가 생겨요.'];
     modal([h('h3', null, '홈 화면에 안키로 추가'), h('ol', { style: { margin: '8px 0 0', paddingLeft: '20px', display: 'grid', gap: '6px', fontSize: '15px' } }, steps.map(t => h('li', null, t)))]);
+  };
+}
+
+// ── 실시간 모드: 시계가 지금 시각을 따라가고, 날씨·따릉이 실시간 정보를 경로에 반영
+let liveTimer = null;
+function setLive(on, refresh = true) {
+  state.live = !!on; prefs.set('live', state.live);
+  clearInterval(liveTimer); liveTimer = null;
+  if (state.live) {
+    startLive();
+    const tick = () => {
+      const d = new Date(), mins = d.getHours() * 60 + d.getMinutes();
+      if (mins === state.minutes) return;
+      const before = { h: hour(), night: isNight() };
+      state.minutes = mins; applyClock();
+      if (before.h !== hour() || before.night !== isNight()) current?.refresh?.(); // 시간대가 바뀔 때만 다시 계산
+    };
+    state.minutes = -1; tick();
+    liveTimer = setInterval(tick, 30000);
+  } else stopLive();
+  if (app) { applyClock(); if (refresh) current?.refresh?.(); }
+}
+
+// ── 내 위치: 지도에 파란 점으로 표시하고 움직이면 따라감 (위치는 기기 밖으로 보내지 않음)
+function wireLocate() {
+  onGeo(g => { if (g.pos) app.map.setMyLocation(g.pos); });
+  $('#locate-btn').onclick = async () => {
+    const btn = $('#locate-btn'); btn.disabled = true; btn.textContent = '찾는 중…';
+    try {
+      const p = await locateOnce();
+      const out = distanceOutside(app.map.areaBounds(), p.lat, p.lon);
+      if (out > 1500) toast(`지금 동대문구에서 약 ${(out / 1000).toFixed(1)} km 떨어져 있어요. 안키로는 동대문구 길만 안내해요.`, 4200);
+      else { app.map.map.flyTo([p.lat, p.lon], Math.max(16.5, app.map.map.getZoom()), { duration: 0.6 }); startWatch(); }
+    } catch (e) { toast(geoErrorText(e), 4200); }
+    finally { btn.disabled = false; btn.textContent = '◎ 내 위치'; }
   };
 }
 
