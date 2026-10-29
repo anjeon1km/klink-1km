@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>K-Link 1km</title>
+<title>안키로 · 안전한 1키로</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230052a4'/%3E%3Cpath d='M10 30.5C16 30.5 16 21 21.5 21S27 15 29 13' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-dasharray='.01 4.6'/%3E%3Ccircle cx='10' cy='30.5' r='3.4' fill='%23fff'/%3E%3Cpath d='M29.5 3.5a5.6 5.6 0 0 0-5.6 5.6c0 4 5.6 9.4 5.6 9.4s5.6-5.4 5.6-9.4a5.6 5.6 0 0 0-5.6-5.6z' fill='%23ffd23f'/%3E%3Ccircle cx='29.5' cy='9.1' r='2' fill='%230052a4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -15,14 +16,24 @@
 <div class="app" id="app" data-mode="citizen">
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"><span>1</span>km</span>
-      <span class="brand-text"><b>K-Link 1km</b><small>동대문구 · 안전한 마지막 1km</small></span>
+      <!-- 안키로 마크: 역(흰 점)에서 안전한 길(점선)을 따라 목적지(노란 핀)까지 — '안전한 1키로' -->
+      <svg class="brand-mark" viewBox="0 0 40 40" width="38" height="38" aria-hidden="true">
+        <rect width="40" height="40" rx="11" class="bm-bg"/>
+        <path d="M10 30.5C16 30.5 16 21 21.5 21S27 15 29 13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-dasharray=".01 4.6"/>
+        <circle cx="10" cy="30.5" r="3.4" fill="#fff"/>
+        <path d="M29.5 3.5a5.6 5.6 0 0 0-5.6 5.6c0 4 5.6 9.4 5.6 9.4s5.6-5.4 5.6-9.4a5.6 5.6 0 0 0-5.6-5.6z" fill="#ffd23f"/>
+        <circle cx="29.5" cy="9.1" r="2" class="bm-bg"/>
+      </svg>
+      <span class="brand-text"><b>안키로</b><small>안전한 1키로 · 동대문구 PM–대중교통 환승</small></span>
     </div>
     <div class="seg" role="tablist" aria-label="화면 모드">
       <button id="mode-citizen" role="tab" aria-selected="true" data-mode="citizen">시민 앱</button>
       <button id="mode-policy" role="tab" aria-selected="false" data-mode="policy">정책 대시보드</button>
     </div>
     <div class="top-actions">
+      <button class="font-btn" id="font-btn" type="button" aria-pressed="false" aria-label="글자 크기: 보통. 누르면 커집니다" title="글자 크기">
+        <span class="fa-s" aria-hidden="true">가</span><span class="fa-l" aria-hidden="true">가</span>
+      </button>
       <button class="clock" id="clock-btn" aria-haspopup="dialog" aria-expanded="false" title="시각과 야간 모드">
         <span class="clock-dot" aria-hidden="true"></span><span id="clock-text">--:--</span><span class="clock-mode" id="clock-mode">주간</span>
       </button>

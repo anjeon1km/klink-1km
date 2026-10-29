@@ -5,3 +5,7 @@ config/sources.local.json
 Thumbs.db
 tools/_*.mjs
 .claude/
+
+# 팀 보고서 작업 파일 (공개 저장소에 올리지 않음)
+보고서_사본/
+보고서_그림/

@@ -25,6 +25,7 @@ let app, current = null;
 
 async function boot() {
   const bar = $('#loading-text');
+  applyFont(prefs.get('fontLevel', 0));
   try {
     state.minutes = prefs.get('minutes', state.minutes);
     state.mode = prefs.get('mode', 'citizen');
@@ -35,7 +36,7 @@ async function boot() {
     map.onHubClick = hb => { set({ selectedHub: hb.id }); if (state.mode !== 'citizen') setMode('citizen', false); goTab('hubs'); };
     map.onWalkMode = () => { if (state.mode === 'citizen') renderCitizenLegend(); };
     $('#loading').hidden = true;
-    wireTop(); wireLayers(); wireFeedback();
+    wireTop(); wireFont(); wireLayers(); wireFeedback();
     store.subscribe('reports', list => map.showReports(list.filter(r => r.cat), r => { map.map.openPopup(popupFor(r), [r.lat, r.lon]); }));
     store.onMode(mode => { $('#feedback-store-note').textContent = mode === 'local' ? '이 기기에만 저장됩니다' : '팀원 모두에게 보입니다'; current?.refresh?.(); });
     applyClock();
@@ -120,6 +121,27 @@ function wireTop() {
   $('#night-auto').onchange = e => { state.nightAuto = e.target.checked; update(state.minutes, true); };
   $('#night-force').onchange = e => { state.nightForce = e.target.checked; update(state.minutes, true); };
   on('clock', () => { prefs.set('minutes', state.minutes); applyClock(); });
+}
+
+// ── 글자 크기 (어르신용): 보통 → 크게 → 아주 크게 → 보통
+const FONT_LEVELS = [{ zoom: 1, name: '보통' }, { zoom: 1.15, name: '크게' }, { zoom: 1.3, name: '아주 크게' }];
+function applyFont(level) {
+  const lv = FONT_LEVELS[level] ? level : 0;
+  document.documentElement.style.setProperty('--ui-zoom', String(FONT_LEVELS[lv].zoom));
+  $('#app').dataset.font = String(lv);
+  const btn = $('#font-btn');
+  btn.setAttribute('aria-pressed', String(lv > 0));
+  btn.setAttribute('aria-label', `글자 크기: ${FONT_LEVELS[lv].name}. 누르면 ${FONT_LEVELS[(lv + 1) % FONT_LEVELS.length].name}(으)로 바뀝니다`);
+  btn.title = `글자 크기: ${FONT_LEVELS[lv].name}`;
+  return lv;
+}
+function wireFont() {
+  let level = applyFont(prefs.get('fontLevel', 0));
+  $('#font-btn').onclick = () => {
+    level = applyFont((level + 1) % FONT_LEVELS.length); prefs.set('fontLevel', level);
+    toast(`글자 크기: ${FONT_LEVELS[level].name}`);
+    setTimeout(() => app.map.map.invalidateSize(), 50); // 넓어진 패널만큼 지도 크기 다시 계산
+  };
 }
 
 // ── layers

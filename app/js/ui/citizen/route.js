@@ -76,7 +76,7 @@ export function renderRoute(app, body) {
         h('button.btn.small.ghost', { type: 'button', onclick: () => { [trip.from, trip.to] = [trip.to, trip.from]; replan(true); draw(); }, title: '출발·도착 바꾸기' }, '⇅ 바꾸기'))));
 
     body.append(h('section.block', null,
-      h('h3.block-title', null, '누가 이동하나요?'),
+      h('h3.block-title', null, '어떤 경로를 선택하시나요?'),
       h('div.profile-grid', { role: 'radiogroup', 'aria-label': '이동 방식' }, PROFILES.map(pr => h('button.profile', { type: 'button', role: 'radio', 'aria-checked': String(trip.profile === pr.key), onclick: () => { trip.profile = pr.key; replan(true); draw(); } },
         h('span.profile-ico', { html: ICON[pr.icon] }), h('span', null, pr.label))))));
 

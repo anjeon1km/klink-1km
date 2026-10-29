@@ -14,7 +14,7 @@ const html = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
 const body = html.slice(html.indexOf('<!--APP-->') + 10, html.indexOf('<!--/APP-->')).trim();
 const fonts = html.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]+>/)[0];
 const page = [
-  '<title>K-Link 1km</title>',
+  '<title>안키로 · 안전한 1키로</title>',
   fonts,
   '<link rel="stylesheet" href="vendor/leaflet.css">',
   '<link rel="stylesheet" href="css/app.css">',
