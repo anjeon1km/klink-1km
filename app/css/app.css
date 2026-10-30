@@ -1,21 +1,22 @@
-/* K-Link 1km — layout: map-first workspace with a side sheet (stacked under the map on phones).
-   Visual language: road markings and Seoul transit signage. Accent = 1호선 블루 (#0052A4, 회기역의 노선색).
+/* 안키로 — layout: map-first workspace with a side sheet (stacked under the map on phones).
+   Accent = 안키로 로고 초록 (#07735C) · 연두 (#BFEB6A). 눈이 편하도록 부드러운 바탕·둥근 카드·옅은 그림자.
    Grades use the status palette and always come with a line style + text (색만으로 구분하지 않음). */
 :root {
-  --bg: #eceff2;
+  --bg: #f1f5f3;
   --panel: #ffffff;
-  --panel-2: #f5f7f9;
-  --ink: #121820;
-  --ink-2: #4a5260;
-  --muted: #778190;
-  --line: #dde2e8;
-  --accent: #0052a4;
+  --panel-2: #f5f8f6;
+  --ink: #14201b;
+  --ink-2: #44514b;
+  --muted: #66746d;
+  --line: #e0e8e4;
+  --accent: #07735c;
   --accent-ink: #ffffff;
-  --accent-soft: #e2ebf7;
+  --accent-soft: #e3f2ec;
+  --brand-lime: #bfeb6a;
   --g: #0ca30c; --y: #f2a90f; --r: #d03b3b; --x: #9aa3ae;
   --g-soft: #e3f4e3; --y-soft: #fdf1d6; --r-soft: #fbe3e3;
   --lamp: #ffb547;
-  --shadow: 0 1px 2px rgba(18, 24, 32, .06), 0 4px 16px rgba(18, 24, 32, .08);
+  --shadow: 0 1px 2px rgba(15, 40, 30, .05), 0 6px 18px rgba(15, 40, 30, .07);
   --map-land: #f2f2ee; --map-road: #ffffff; --map-road-case: #d9dbd6; --map-major: #fff3d9; --map-major-case: #e3cf9f;
   --map-water: #cadff0; --map-park: #dcebd4; --map-campus: #ebe6f2; --map-rail: #9aa0a8; --map-contour: rgba(120, 104, 80, .22);
   --map-label: #4a5260; --map-district: #0052a4; --map-dong: rgba(0, 82, 164, .28);
@@ -24,12 +25,12 @@
   --f-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   --f-sign: "Do Hyeon", "IBM Plex Sans KR", "Malgun Gothic", sans-serif;
-  --r-s: 6px; --r-m: 10px;
+  --r-s: 8px; --r-m: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d1014; --panel: #151a20; --panel-2: #1b2128; --ink: #e8ecf1; --ink-2: #b3bcc8; --muted: #8790a0; --line: #283039;
-    --accent: #4f8fe6; --accent-ink: #08111d; --accent-soft: #172538;
+    --bg: #0c1311; --panel: #131c19; --panel-2: #19241f; --ink: #e6efea; --ink-2: #b2c0b9; --muted: #85948d; --line: #24312c;
+    --accent: #3cc49c; --accent-ink: #04140f; --accent-soft: #10302a;
     --g-soft: #12301a; --y-soft: #34290f; --r-soft: #3a1717; --x: #6e7782;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .35);
     --map-land: #171b20; --map-road: #2a3038; --map-road-case: #12161a; --map-major: #3a3528; --map-major-case: #15130d;
@@ -41,8 +42,8 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d1014; --panel: #151a20; --panel-2: #1b2128; --ink: #e8ecf1; --ink-2: #b3bcc8; --muted: #8790a0; --line: #283039;
-  --accent: #4f8fe6; --accent-ink: #08111d; --accent-soft: #172538;
+  --bg: #0c1311; --panel: #131c19; --panel-2: #19241f; --ink: #e6efea; --ink-2: #b2c0b9; --muted: #85948d; --line: #24312c;
+  --accent: #3cc49c; --accent-ink: #04140f; --accent-soft: #10302a;
   --g-soft: #12301a; --y-soft: #34290f; --r-soft: #3a1717; --x: #6e7782;
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .35);
   --map-land: #171b20; --map-road: #2a3038; --map-road-case: #12161a; --map-major: #3a3528; --map-major-case: #15130d;
@@ -72,8 +73,7 @@ small { font-size: 12px; }
 /* ── top bar */
 .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: relative; z-index: 1100; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-mark { flex: none; display: block; }
-.brand-mark .bm-bg { fill: var(--accent); }
+.brand-mark { flex: none; display: block; width: 38px; height: 38px; border-radius: 10px; box-shadow: 0 1px 3px rgba(7, 115, 92, .25); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .brand-text b { font-family: var(--f-sign); font-weight: 400; font-size: 23px; letter-spacing: .04em; color: var(--accent); }
 .brand-text small { color: var(--muted); font-size: 11.5px; }
@@ -421,3 +421,32 @@ details.more > :not(summary) { margin-bottom: 10px; }
 .map-ui-row { display: flex; gap: 6px; }
 .guide-gps { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .guide-gps.off { color: var(--r); font-weight: 600; }
+
+/* ── 화면 다듬기 (편하게 보이도록): 둥근 카드, 옅은 그림자, 넉넉한 줄 간격, 로고 초록 강조 */
+.topbar { border-bottom-color: transparent; box-shadow: 0 1px 0 var(--line), 0 2px 10px rgba(15, 40, 30, .04); }
+.seg { background: var(--panel-2); border-color: transparent; }
+.seg button { padding: 7px 16px; }
+.tabs { border-bottom-color: var(--line); }
+.tabs button { font-size: 14px; }
+.tabs button[aria-selected="true"] { color: var(--accent); }
+.app[data-mode="citizen"] .panel-body { line-height: 1.6; }
+.block-title { color: var(--ink-2); font-size: 13.5px; }
+.card { border-radius: var(--r-m); border-color: var(--line); box-shadow: 0 1px 2px rgba(15, 40, 30, .04); }
+.card.soft { box-shadow: none; }
+.btn { border-radius: 10px; padding: 9px 14px; transition: background-color .15s, border-color .15s, filter .15s; }
+.btn.small { border-radius: 8px; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
+.btn.ghost:hover:not(:disabled), .alt-row:hover:not(:disabled) { background: var(--panel-2); }
+.hero { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+.hero-eyebrow { color: var(--accent); }
+.profile { border-radius: 14px; border-color: var(--line); background: var(--panel); transition: border-color .15s, background-color .15s; }
+.profile:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.profile[aria-checked="true"] { box-shadow: inset 0 0 0 1px var(--accent); }
+.alt-row { border-radius: 14px; }
+.live-strip, .night-strip { border-radius: 14px; }
+.map-legend { border-radius: 14px; border-color: transparent; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); }
+.chip-btn { border-radius: 999px; }
+.pill.live { background: color-mix(in srgb, var(--brand-lime) 45%, var(--panel)); color: #2f5a10; border-color: transparent; }
+.install-bar { border-radius: 18px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.live { color: var(--brand-lime); background: #1e3317; } }
+:root[data-theme="dark"] .pill.live { color: var(--brand-lime); background: #1e3317; }
