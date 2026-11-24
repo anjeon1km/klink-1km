@@ -16,10 +16,12 @@ import { renderTypes } from './ui/policy/types.js';
 import { renderSim } from './ui/policy/sim.js';
 import { renderOps } from './ui/policy/ops.js';
 import { renderMethod } from './ui/policy/method.js';
+import { renderFinance } from './ui/policy/finance.js';
+import { initVoiceHelp, voiceHelpOn, setVoiceHelp, speak, describeScreen } from './ui/voicehelp.js';
 
 const TABS = {
   citizen: [['route', '길찾기', renderRoute], ['hubs', '거점', renderHubs], ['ride', '주행', renderRide], ['report', '제보', renderReport], ['history', '내 기록', renderHistory]],
-  policy: [['vuln', '취약지도', renderVuln], ['types', '유형·정책', renderTypes], ['sim', '시뮬레이터', renderSim], ['ops', '운영 현황', renderOps], ['method', '데이터·방법', renderMethod]],
+  policy: [['vuln', '취약지도', renderVuln], ['types', '유형·정책', renderTypes], ['sim', '시뮬레이터', renderSim], ['ops', '운영 현황', renderOps], ['fin', '재정·협력', renderFinance], ['method', '데이터·방법', renderMethod]],
 };
 const TAB_LABEL = Object.fromEntries([...TABS.citizen, ...TABS.policy].map(([k, l]) => [k, l]));
 
@@ -38,7 +40,7 @@ async function boot() {
     map.onHubClick = hb => { set({ selectedHub: hb.id }); if (state.mode !== 'citizen') setMode('citizen', false); goTab('hubs'); };
     map.onWalkMode = () => { if (state.mode === 'citizen') renderCitizenLegend(); };
     $('#loading').hidden = true;
-    wireTop(); wireFont(); wireLayers(); wireFeedback(); wireInstall(); wireLocate();
+    wireTop(); wireView(); wireLayers(); wireFeedback(); wireInstall(); wireLocate();
     store.subscribe('reports', list => map.showReports(list.filter(r => r.cat), r => { map.map.openPopup(popupFor(r), [r.lat, r.lon]); }));
     store.onMode(mode => { $('#feedback-store-note').textContent = mode === 'local' ? '이 기기에만 저장됩니다' : '팀원 모두에게 보입니다'; current?.refresh?.(); });
     setLive(prefs.get('live', !!document.querySelector('link[rel="manifest"]')), false); // 공개 주소·설치 앱은 처음부터 실시간
@@ -81,6 +83,7 @@ function goTab(k) {
   const fn = TABS[mode].find(t => t[0] === k)[2];
   current = fn(app, body) || null;
   $('#feedback-where').textContent = `지금 화면: ${mode === 'citizen' ? '시민 앱' : '정책 대시보드'} › ${TAB_LABEL[k]}`;
+  if (voiceHelpOn()) setTimeout(() => speak(describeScreen()), 300);
 }
 
 // 지도 범례: 꼭 필요한 것만 한 덩어리로
@@ -128,25 +131,42 @@ function wireTop() {
   on('clock', () => { if (state.live) { setLive(false, false); toast('예시 경로의 시각으로 바꿔 실시간을 껐어요'); } prefs.set('minutes', state.minutes); applyClock(); });
 }
 
-// ── 글자 크기 (어르신용): 보통 → 크게 → 아주 크게 → 보통
+// ── 보기 설정 (가가 단추): 글자 크기 3단계 · 쉬운 화면(어르신) · 음성 도움(화면 읽어주기) — 학회 피드백 4·6
 const FONT_LEVELS = [{ zoom: 1, name: '보통' }, { zoom: 1.15, name: '크게' }, { zoom: 1.3, name: '아주 크게' }];
 function applyFont(level) {
   const lv = FONT_LEVELS[level] ? level : 0;
   document.documentElement.style.setProperty('--ui-zoom', String(FONT_LEVELS[lv].zoom));
   $('#app').dataset.font = String(lv);
-  const btn = $('#font-btn');
-  btn.setAttribute('aria-pressed', String(lv > 0));
-  btn.setAttribute('aria-label', `글자 크기: ${FONT_LEVELS[lv].name}. 누르면 ${FONT_LEVELS[(lv + 1) % FONT_LEVELS.length].name}(으)로 바뀝니다`);
-  btn.title = `글자 크기: ${FONT_LEVELS[lv].name}`;
+  $('#font-btn').setAttribute('aria-pressed', String(lv > 0));
+  document.querySelectorAll('#view-pop [data-level]').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.level === lv)));
+  setTimeout(() => app?.map?.map.invalidateSize(), 50); // 넓어진 패널만큼 지도 크기 다시 계산
   return lv;
 }
-function wireFont() {
+// 쉬운 화면: 큰 글씨, 정책 대시보드·예시 경로·자세히 같은 부가 기능을 숨기고 단추를 크게
+function applyEasy(on, init = false) {
+  $('#app').dataset.easy = on ? '1' : '';
+  $('#easy-toggle').checked = on;
+  if (!on) return;
+  if (init) { state.mode = 'citizen'; if (state.tab.citizen === 'hubs') state.tab.citizen = 'route'; return; }
+  if (state.mode === 'policy') setMode('citizen');
+  else if (state.tab.citizen === 'hubs') goTab('route');
+}
+function wireView() {
   let level = applyFont(prefs.get('fontLevel', 0));
-  $('#font-btn').onclick = () => {
-    level = applyFont((level + 1) % FONT_LEVELS.length); prefs.set('fontLevel', level);
-    toast(`글자 크기: ${FONT_LEVELS[level].name}`);
-    setTimeout(() => app.map.map.invalidateSize(), 50); // 넓어진 패널만큼 지도 크기 다시 계산
+  applyEasy(prefs.get('easy', false), true);
+  initVoiceHelp();
+  const pop = $('#view-pop'), btn = $('#font-btn');
+  btn.onclick = () => { pop.hidden = !pop.hidden; btn.setAttribute('aria-expanded', String(!pop.hidden)); };
+  document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target) && !btn.contains(e.target)) { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
+  pop.querySelectorAll('[data-level]').forEach(b => { b.onclick = () => { level = applyFont(+b.dataset.level); prefs.set('fontLevel', level); toast(`글자 크기: ${FONT_LEVELS[level].name}`); }; });
+  $('#easy-toggle').onchange = e => {
+    const on = e.target.checked; prefs.set('easy', on); applyEasy(on);
+    if (on && level < 1) { level = applyFont(1); prefs.set('fontLevel', level); }
+    current?.refresh?.();
+    toast(on ? '쉬운 화면을 켰어요. 꼭 필요한 단추만 크게 보여요' : '쉬운 화면을 껐어요');
   };
+  $('#vh-toggle').onchange = e => setVoiceHelp(e.target.checked);
+  $('#vh-describe').onclick = () => speak(describeScreen());
 }
 
 // ── 앱 설치 (설치형 웹앱): manifest가 있는 공개 주소(GitHub Pages)에서만 — 팀 공유 링크(아티팩트)에서는 꺼짐

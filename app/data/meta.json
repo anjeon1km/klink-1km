@@ -1,5 +1,5 @@
 {
- "builtAt": "2026-10-15T15:20:55.766Z",
+ "builtAt": "2026-11-24T07:47:05.996Z",
  "area": "서울특별시 동대문구",
  "params": {
   "grade": {
@@ -144,7 +144,7 @@
   "nodes": 18793,
   "links": 22048,
   "cells": 245,
-  "hubs": 98,
+  "hubs": 99,
   "busStops": 394,
   "stations": 12,
   "crosswalks": 2302,

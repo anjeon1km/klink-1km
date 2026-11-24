@@ -4,13 +4,15 @@
 //  C 보조거점      : 구간 중간·주거지 입구 — 기존 따릉이 대여소 자리(A·B에서 150 m 이상). 주차면 10
 //  야간 안심거점   : A·B 중 조명(점수 0.7 이상)과 CCTV(50 m 안)가 확인된 곳 + 정책안이 지정한 H1
 //  시범구간        : H1 회기역 1번 출구(A·야간 안심) · H2 경희대 정문·의료원(B) · H3 캠퍼스 상부 평화의전당 일대(B, 오르막 도착 전용)
-//                    · H4 회기시장 일대(C, 선택) / 구간 C1 H1→H4, C2 H4→H2, C3 H2→H3
+//                    · H4 회기시장 일대(C, 선택) · H5 경희대 기숙사 세화원 앞(B) / 구간 C1 H1→H4, C2 H4→H2, C3 H2→H3
 import { dist, pointInRing, round, PointIndex } from '../lib/geo.js';
 import { buildAdjacency, nearestNode, dijkstra, pathTo, mainComponentAccept } from '../../app/js/core/graph.js';
 import { F, fastCost } from '../../app/js/core/grading.js';
+import { PARAMS } from '../../app/js/core/params.js';
 
 const SLOTS = { A: 30, B: 20, C: 10 };
 const PEACE_HALL = [37.59868, 127.05274]; // 경희대 평화의전당 (OSM way 중심)
+const DORM = [37.59437, 127.05608];       // 경희대 기숙사 세화원 (OSM way 329968416 중심)
 
 export function buildHubs({ net, transit, bike, osm, ringsDdm, cctv = [] }) {
   buildAdjacency(net);
@@ -77,6 +79,14 @@ export function buildHubs({ net, transit, bike, osm, ringsDdm, cctv = [] }) {
   let acc = 0, h4node = H1.node;
   for (const s of p12) { acc += net.links.len[s.link]; h4node = s.dir === 1 ? net.links.b[s.link] : net.links.a[s.link]; if (acc >= tot * 380 / 790) break; }
   const H4 = add({ id: 'pilot-H4', code: 'H4', grade: 'C', kind: 'pilot', name: '회기시장 일대 (위치 확인 필요)', lat: round(net.nodes.lat[h4node]), lon: round(net.nodes.lon[h4node]), note: '회기로 중간, 주거지 연결 — 정확한 위치는 현장 확인 후 수정' });
+
+  // ── 시범구간 H5 (경희대 기숙사 세화원 앞, B): 학회 피드백 — 야간 회기역 이용은 캠퍼스보다 기숙사행이 많음
+  // 건물 바로 앞 진입로는 15 %를 넘는 짧은 오르막이라, 회기역에서 오는 길이 그 오르막에 닿기 직전 노드에 둠
+  const p15 = fast(H1, { node: pmNode(DORM[0], DORM[1]) });
+  let h5node = H1.node;
+  for (const s of p15) { if (Math.abs(net.links.g[s.link]) > PARAMS.grade.upRed) break; h5node = s.dir === 1 ? net.links.b[s.link] : net.links.a[s.link]; }
+  const H5 = add({ id: 'pilot-H5', code: 'H5', grade: 'B', kind: 'pilot', name: '경희대 기숙사 (세화원 앞)', lat: round(net.nodes.lat[h5node]), lon: round(net.nodes.lon[h5node]), note: '기숙사생 야간 귀가 도착지 — 세화원(OSM way 329968416) 진입 오르막 아래' });
+  H5.node = h5node;
 
   // ── C급: 따릉이 대여소 자리
   for (const s of bike.stations.filter(s => s.dong)) {

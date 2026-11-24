@@ -32,7 +32,7 @@
       <button id="mode-policy" role="tab" aria-selected="false" data-mode="policy">정책 대시보드</button>
     </div>
     <div class="top-actions">
-      <button class="font-btn" id="font-btn" type="button" aria-pressed="false" aria-label="글자 크기: 보통. 누르면 커집니다" title="글자 크기">
+      <button class="font-btn" id="font-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="보기 설정: 글자 크기, 쉬운 화면, 음성 도움" title="보기 설정">
         <span class="fa-s" aria-hidden="true">가</span><span class="fa-l" aria-hidden="true">가</span>
       </button>
       <button class="clock" id="clock-btn" aria-haspopup="dialog" aria-expanded="false" title="시각과 야간 모드">
@@ -44,6 +44,16 @@
       </button>
     </div>
   </header>
+
+  <div class="clock-pop view-pop" id="view-pop" role="dialog" aria-label="보기 설정" hidden>
+    <b>글자 크기</b>
+    <div class="font-levels" role="radiogroup" aria-label="글자 크기">
+      <button type="button" role="radio" data-level="0">보통</button><button type="button" role="radio" data-level="1">크게</button><button type="button" role="radio" data-level="2">아주 크게</button>
+    </div>
+    <label class="check-row" for="easy-toggle"><input type="checkbox" id="easy-toggle"> <span><b>쉬운 화면</b> — 큰 글씨와 꼭 필요한 단추만 (어르신께 권해요)</span></label>
+    <label class="check-row" for="vh-toggle"><input type="checkbox" id="vh-toggle"> <span><b>음성 도움</b> — 단추를 누르면 이름을 읽어 주고, 한 번 더 누르면 실행</span></label>
+    <button class="btn small" id="vh-describe" type="button">이 화면 설명 듣기</button>
+  </div>
 
   <div class="clock-pop" id="clock-pop" role="dialog" aria-label="시각 설정" hidden>
     <label class="check-row live-row" for="live-toggle"><input type="checkbox" id="live-toggle"> <b>실시간</b> — 지금 시각과 날씨·따릉이 정보로 보기</label>

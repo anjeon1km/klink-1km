@@ -21,7 +21,8 @@ const ABHub = h => h && (h.grade === 'A' || h.grade === 'B');
  *   tagTime: Date|null, rentTime, returnTime: Date, rentPos, returnPos: {lat, lon},
  *   rentHub, returnHub: hub|null, photo: boolean, photoTime: Date|null,
  *   redLinks: number, overSpeedShare: 0..1, rideM: number, todayCount: number, tagUsed: boolean,
- *   linked: boolean (교통카드·업체 계정 연동), helmet: boolean (공유 헬멧 인증), nearStationM: number|null
+ *   linked: boolean (교통카드·업체 계정 연동), nearStationM: number|null,
+ *   helmet: 'personal'(착용 사진) | 'shared'(거점 공유 헬멧) | 'self'(썼다고만 답함) | 'none'(미착용) — 출발 전 안전 확인에서 고름
  * }
  */
 export function judge(trip) {
@@ -33,6 +34,8 @@ export function judge(trip) {
   const durMin = minutes(trip.rentTime, trip.returnTime);
   const hour = trip.returnTime.getHours();
   const fail = (reason, tip) => result('none', met, [...unmet, reason], tip ? [tip] : tips);
+  const helmetOk = trip.helmet === 'personal' || trip.helmet === 'shared' || trip.helmet === true;
+  if (trip.helmet === 'none') notes.push('헬멧 미착용 — PM 운전자는 안전모를 써야 합니다 (도로교통법 제50조, 범칙금 2만 원)');
 
   // 비거점 반납 경고 (역 반경 300 m 안이면 업체 추가요금)
   if (!atRet && trip.nearStationM != null && trip.nearStationM <= T.stationNoHubM) notes.push(`역 반경 ${T.stationNoHubM} m 안 비거점 반납 — 업체 추가요금 대상`);
@@ -82,14 +85,15 @@ export function judge(trip) {
     if (nightHub) { night = true; met.push('22~01시 야간 안심거점 이용 — 심야 할증 면제'); }
     else unmet.push('22~01시지만 야간 안심거점에서 출발·도착하지 않음');
   }
-  if (trip.helmet && level === 'safe') met.push('공유 헬멧 착용 인증');
+  if (helmetOk) met.push(trip.helmet === 'personal' ? '헬멧 착용 사진 확인' : '거점 공유 헬멧 착용 인증');
+  else if (trip.helmet === 'self') met.push('헬멧 착용 (사진이 없어 마일리지는 제외)');
   return result(level, met, unmet, tips, night);
 
   function result(lv, m, u, t, nightFlag = false) {
     const benefits = [];
     if (lv === 'basic' || lv === 'safe') benefits.push({ label: '잠금해제료 면제', value: B.unlockFee, unit: '원' });
     if (lv === 'safe') benefits.push({ label: '주행요금 마일리지', value: B.safeMileage, unit: 'M' });
-    if (lv === 'safe' && trip.helmet) benefits.push({ label: '헬멧 인증 마일리지', value: B.helmetMileage, unit: 'M' });
+    if ((lv === 'basic' || lv === 'safe') && helmetOk) benefits.push({ label: '헬멧 인증 마일리지', value: B.helmetMileage, unit: 'M' });
     if (nightFlag && (lv === 'basic' || lv === 'safe')) benefits.push({ label: '심야 할증 면제', value: B.nightSurcharge, unit: '원' });
     const won = benefits.filter(b => b.unit === '원').reduce((a, b) => a + b.value, 0);
     const mileage = benefits.filter(b => b.unit === 'M').reduce((a, b) => a + b.value, 0);

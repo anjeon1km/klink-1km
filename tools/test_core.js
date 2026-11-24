@@ -37,7 +37,7 @@ const add = m => new Date(now.getTime() + m * 60000);
 const base = { direction: 'toPm', tagTime: now, rentTime: add(3), returnTime: add(9), rentPos: H.H1, returnPos: { lat: H.H2.lat + 0.00005, lon: H.H2.lon }, rentHub: H.H1, returnHub: H.H2, photo: true, photoTime: add(9), redLinks: 0, overSpeedShare: 0, rideM: 900, todayCount: 0, linked: true };
 const at = (h, m) => new Date(2026, 9, 14, h, m);
 for (const [label, trip] of [
-  ['정책안 예시 08:40→08:49 안전', base], ['헬멧 인증', { ...base, helmet: true }], ['거점 밖 22m', { ...base, returnPos: { lat: H.H2.lat + 0.00033, lon: H.H2.lon } }], ['사진 없음', { ...base, photo: false }],
+  ['정책안 예시 08:40→08:49 안전', base], ['헬멧 인증', { ...base, helmet: true }], ['헬멧 사진', { ...base, helmet: 'personal' }], ['헬멧 응답만', { ...base, helmet: 'self' }], ['헬멧 없음', { ...base, helmet: 'none' }], ['거점 밖 22m', { ...base, returnPos: { lat: H.H2.lat + 0.00033, lon: H.H2.lon } }], ['사진 없음', { ...base, photo: false }],
   ['적색 1곳 통과', { ...base, redLinks: 1 }], ['태그 40분 후', { ...base, rentTime: add(40), returnTime: add(48) }], ['2.4 km 상한 초과', { ...base, rideM: 2400 }],
   ['같은 거점 왕복', { ...base, returnHub: H.H1, returnPos: H.H1, rideM: 120, returnTime: add(4) }], ['C급끼리', { ...base, rentHub: H.H4, rentPos: H.H4, returnHub: { ...H.H4, id: 'x', grade: 'C' }, returnPos: H.H4 }],
   ['야간 23:10 (H1 야간 안심)', { ...base, tagTime: at(23, 10), rentTime: at(23, 12), returnTime: at(23, 20), photoTime: at(23, 20) }],

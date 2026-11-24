@@ -1,4 +1,4 @@
-// 시민 앱 · 주행: 대여 → 주행 중 안내(다음 구간 등급·권장 속도, 음성) → 반납 인증(반경 15 m + 사진) → 환승 판정 카드.
+// 시민 앱 · 주행: 출발 전 안전 확인(헬멧, 야간 점검) → 대여 → 주행 중 안내(다음 구간 등급·권장 속도, 음성) → 반납 인증(반경 15 m + 사진) → 환승 판정 카드.
 // 실제 GPS 대신 경로를 따라 움직이는 시뮬레이션으로 시연합니다 (재생 속도 조절 가능).
 import { h, clear, fmtMin, fmtM, fmtClock, gradeChip, toast, modal } from '../dom.js';
 import { state, hour, isNight } from '../../state.js';
@@ -37,7 +37,7 @@ export function renderRide(app, body) {
   function newSim(p) {
     const steps = p.pm.safe.steps.map(s => ({ ...s, coords: (c => (s.dir === 1 ? c : c.slice().reverse()))(linkCoords(data.network, s.link)) }));
     let t = 0; steps.forEach(s => { s.t0 = t; s.dur = s.len / (s.speed / 3.6); t += s.dur; });
-    return { planRef: p, phase: 'ready', steps, totalSec: t, direction: 'toPm', mult: 8, voice: false, speeding: false, contact: '', shareOn: false, notes: [], photo: null, parkOffset: 0, tagMin: state.minutes, appeal: false, linked: true, helmet: false };
+    return { planRef: p, phase: 'ready', steps, totalSec: t, direction: 'toPm', mult: 8, voice: false, speeding: false, contact: '', shareOn: false, notes: [], photo: null, parkOffset: 0, tagMin: state.minutes, appeal: false, linked: true, helmet: null, helmetPhoto: null };
   }
 
   // ── 1. ready
@@ -50,7 +50,7 @@ export function renderRide(app, body) {
         h('span.hero-meta', null, fmtM(pm.safe.len), h('br'), `권장 ${night ? 15 : 20} km/h`)),
       h('p.hero-line', null, h('b', null, pm.startHub?.name || '출발지 주변'), '에서 빌려 ', h('b', null, pm.endHub?.name || '목적지 주변'), '에 반납'),
       av ? h('div.hero-checks', null, h('span.check', null, `기기 ${av.used}대`), h('span.check', null, `빈 자리 ${av.free}`)) : null,
-      h('button.btn.primary.big', { type: 'button', onclick: start }, night ? '야간 점검 후 대여하기' : '대여하고 출발')));
+      h('button.btn.primary.big', { type: 'button', onclick: start }, '안전 확인 후 대여하기')));
     body.append(h('details.more', null, h('summary', null, '시연 설정'),
       h('div.stack', null,
         h('div.field', null, h('label', { for: 'ride-dir' }, '환승 방향'),
@@ -61,7 +61,6 @@ export function renderRide(app, body) {
           h('input.input', { id: 'ride-tag', type: 'time', value: fmtClock(sim.tagMin), onchange: e => { const [a, b] = e.target.value.split(':').map(Number); sim.tagMin = a * 60 + b; } })),
         h('label.check-row', { for: 'ride-voice' }, h('input', { type: 'checkbox', id: 'ride-voice', checked: sim.voice, onchange: e => { sim.voice = e.target.checked; if (sim.voice) say('음성 안내를 켰습니다.'); } }), '음성 안내'),
         h('label.check-row', { for: 'ride-linked' }, h('input', { type: 'checkbox', id: 'ride-linked', checked: sim.linked, onchange: e => { sim.linked = e.target.checked; } }), '교통카드·업체 계정 연동됨'),
-        pm.startHub?.grade === 'A' ? h('label.check-row', { for: 'ride-helmet' }, h('input', { type: 'checkbox', id: 'ride-helmet', checked: sim.helmet, onchange: e => { sim.helmet = e.target.checked; } }), '거점 공유 헬멧 인증') : null,
         h('label.check-row', { for: 'ride-speed' }, h('input', { type: 'checkbox', id: 'ride-speed', checked: sim.speeding, onchange: e => { sim.speeding = e.target.checked; } }), '과속 상황 만들기'),
         h('div.field', null, h('label', { for: 'ride-mult' }, '재생 속도'),
           h('select.input', { id: 'ride-mult', onchange: e => { sim.mult = +e.target.value; } }, [4, 8, 16, 32].map(v => h('option', { value: v, selected: sim.mult === v }, `×${v}`)))))));
@@ -69,10 +68,7 @@ export function renderRide(app, body) {
   }
 
   async function start() {
-    if (plan.night) {
-      const ok = await nightChecklist();
-      if (!ok) return;
-    }
+    if (!(await safetyCheck())) return;
     sim.phase = 'riding'; sim.t = 0; sim.idx = 0; sim.lastGrade = null; sim.overSec = 0;
     sim.rentMin = sim.tagMin + (plan.pm.walkIn ? plan.pm.walkIn.sec / 60 : 0) + 1;
     if (sim.contact && sim.shareOn) sim.notes.push(`${fmtClock(sim.rentMin)} ${sim.contact}님에게 출발 알림 (예상 도착 ${fmtClock(sim.rentMin + sim.totalSec / 60 + 1)}) — 시연: 실제 발송 없음`);
@@ -81,22 +77,51 @@ export function renderRide(app, body) {
     draw();
   }
 
-  async function nightChecklist() {
-    const contact = h('input.input', { id: 'night-contact', placeholder: '이름 (예: 엄마)', value: sim.contact });
-    const share = h('input', { type: 'checkbox', id: 'night-share', checked: sim.shareOn });
-    const dev = plan.pm.startHub ? demoAvailability(plan.pm.startHub, hour()).rows.filter(r => r.count) : [];
-    const res = await modal([
-      h('h3', null, '야간 대여 전 확인'),
-      h('ul.check-list', null,
-        h('li.ok', null, `전조등·후미등: ${dev.filter(d => d.lightOk).map(d => d.vendor).join(', ') || '정상 기기 없음'} 정상${dev.some(d => !d.lightOk) ? ` · ${dev.filter(d => !d.lightOk).map(d => d.vendor).join(', ')}는 점검 필요로 추천에서 뺐습니다` : ''} (시연 값)`),
-        h('li.ok', null, '음주 상태에서 PM을 운전하면 도로교통법 위반입니다. 술을 마셨다면 도보나 택시를 이용하세요.'),
-        h('li.ok', null, '야간 권장 속도: 녹색 15 km/h, 황색 10 km/h')),
-      h('div.field', null, h('label', { for: 'night-contact' }, '도착 알림 받을 사람 (선택)'), contact),
-      h('label.check-row', { for: 'night-share' }, share, '이번 주행 동안만 위치 공유하기 (언제든 끌 수 있음)'),
-    ], [{ key: 'cancel', label: '취소' }, { key: 'ok', label: '확인하고 대여', primary: true }]);
+  // 출발 전 안전 확인 (학회 피드백: PM 이용이 늘수록 안전장비 착용을 앱에서 확인) — 낮·밤 모두, 밤에는 야간 점검을 더함
+  async function safetyCheck() {
+    const shared = plan.pm.startHub?.grade === 'A'; // A급 역 거점에는 공유 헬멧 보관함 (정책안 3장)
+    let choice = sim.helmet, photo = sim.helmetPhoto;
+    const box = h('div.stack');
+    const file = h('input', { type: 'file', accept: 'image/*', capture: 'user', id: 'helmet-photo', hidden: true, onchange: e => shrinkPhoto(e.target.files[0], url => { photo = url; paint(); }) });
+    const opt = (key, label, sub) => h('label.choice-row', { for: `helmet-${key}` },
+      h('input', { type: 'radio', name: 'helmet', id: `helmet-${key}`, checked: choice === key, onchange: () => { choice = key; paint(); } }),
+      h('span', null, h('b', null, label), sub ? h('small', null, sub) : null));
+    const paint = () => clear(box).append(...[
+      opt('personal', '내 헬멧을 썼어요', `쓴 모습을 한 장 찍으면 마일리지 ${PARAMS.transfer.benefit.helmetMileage}M`),
+      shared ? opt('shared', '거점 공유 헬멧을 빌렸어요', `${plan.pm.startHub.name} 보관함`) : null,
+      opt('none', '헬멧이 없어요'),
+      choice === 'personal' ? h('label.photo-drop', { for: 'helmet-photo' }, photo ? h('img', { src: photo, alt: '헬멧 착용 사진 미리보기' }) : h('span', null, '헬멧을 쓴 모습이 보이게 찍어 주세요'), h('small.muted', null, photo ? '다시 찍기' : '사진 찍기 / 선택 (건너뛰면 마일리지 없이 출발)')) : null,
+      choice === 'none' ? h('p.note.warn', null, `PM 운전자는 안전모를 써야 해요 (도로교통법 제50조, 범칙금 2만 원). ${shared ? '이 거점의 공유 헬멧을 빌리거나' : '가까운 역 거점(A급)의 공유 헬멧을 빌리거나'} 걷기·버스를 이용해 주세요.`) : null].filter(Boolean));
+    paint();
+    const parts = [h('h3', null, '출발 전 안전 확인'), h('h4', { style: { margin: '4px 0 0' } }, '헬멧을 썼나요?'), box, file];
+    let contact, share;
+    if (plan.night) {
+      contact = h('input.input', { id: 'night-contact', placeholder: '이름 (예: 엄마)', value: sim.contact });
+      share = h('input', { type: 'checkbox', id: 'night-share', checked: sim.shareOn });
+      const dev = plan.pm.startHub ? demoAvailability(plan.pm.startHub, hour()).rows.filter(r => r.count) : [];
+      parts.push(h('h4', { style: { margin: '8px 0 0' } }, '야간 점검'),
+        h('ul.check-list', null,
+          h('li.ok', null, `전조등·후미등: ${dev.filter(d => d.lightOk).map(d => d.vendor).join(', ') || '정상 기기 없음'} 정상${dev.some(d => !d.lightOk) ? ` · ${dev.filter(d => !d.lightOk).map(d => d.vendor).join(', ')}는 점검 필요로 추천에서 뺐습니다` : ''} (시연 값)`),
+          h('li.ok', null, '음주 상태에서 PM을 운전하면 도로교통법 위반입니다. 술을 마셨다면 도보나 택시를 이용하세요.'),
+          h('li.ok', null, `야간 권장 속도: 녹색 ${PARAMS.speed.night.G} km/h, 황색 ${PARAMS.speed.night.Y} km/h`)),
+        h('div.field', null, h('label', { for: 'night-contact' }, '도착 알림 받을 사람 (선택)'), contact),
+        h('label.check-row', { for: 'night-share' }, share, '이번 주행 동안만 위치 공유하기 (언제든 끌 수 있음)'));
+    }
+    const res = await modal(parts, [{ key: 'cancel', label: '취소' }, { key: 'ok', label: '확인하고 대여', primary: true }]);
     if (res !== 'ok') return false;
-    sim.contact = contact.value.trim(); sim.shareOn = share.checked;
+    if (!choice) { toast('헬멧을 썼는지 먼저 골라 주세요'); return safetyCheck(); }
+    sim.helmet = choice === 'personal' && !photo ? 'self' : choice; sim.helmetPhoto = choice === 'personal' ? photo : null;
+    if (plan.night) { sim.contact = contact.value.trim(); sim.shareOn = share.checked; }
     return true;
+  }
+  function shrinkPhoto(f, done) {
+    if (!f) return;
+    const img = new Image(); const url = URL.createObjectURL(f);
+    img.onload = () => {
+      const s = Math.min(1, 360 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); done(c.toDataURL('image/jpeg', 0.6));
+    };
+    img.src = url;
   }
 
   // ── 2. riding
@@ -148,7 +173,7 @@ export function renderRide(app, body) {
     heroEls.grade.textContent = `${GRADE_WORD[st.grade]} · 권장 ${st.speed} km/h`;
     heroEls.grade.style.color = st.grade === 'G' ? '#5fd35f' : st.grade === 'Y' ? '#ffc94a' : '#ff7a7a';
     const name = data.network.links.name[st.link] >= 0 ? data.network.names[data.network.links.name[st.link]] : '이름 없는 길';
-    heroEls.sub.textContent = `${name}${night ? ' · 야간 모드' : ''}`;
+    heroEls.sub.textContent = `${name}${night ? ' · 야간 모드' : ''}${sim.helmet === 'none' ? ' · 헬멧 없음 — 천천히' : ''}`;
     clear(heroEls.speed).append(String(v), h('small', null, 'km/h'));
     heroEls.speed.style.color = v > st.speed ? '#ff7a7a' : '#eef2f6';
     heroEls.next.textContent = nxt ? `${Math.max(0, Math.round(distToNext))} m 뒤 ${GRADE_WORD[nxt.grade]} 구간` : '곧 도착';
@@ -184,15 +209,7 @@ export function renderRide(app, body) {
     if (!hub) return last;
     const off = sim.parkOffset / 111000; return [hub.lat + off * 0.6 + 0.00003, hub.lon + off * 0.8 / Math.cos(hub.lat * Math.PI / 180)];
   }
-  function readPhoto(f) {
-    if (!f) return;
-    const img = new Image(); const url = URL.createObjectURL(f);
-    img.onload = () => {
-      const s = Math.min(1, 360 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s;
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); sim.photo = c.toDataURL('image/jpeg', 0.6); sim.photoMin = sim.returnMin; URL.revokeObjectURL(url); draw();
-    };
-    img.src = url;
-  }
+  function readPhoto(f) { shrinkPhoto(f, url => { sim.photo = url; sim.photoMin = sim.returnMin; draw(); }); }
 
   async function finish() {
     const pm = plan.pm; const pos = parkPos();
@@ -216,7 +233,7 @@ export function renderRide(app, body) {
     sim.savedId = await store.add('rides', {
       level: r.level, won: r.won, mileage: r.mileage, night: plan.night, nightBenefit: !!r.night, direction: r.direction, atHub: !r.unmet.some(u => /거점 밖|환승거점이 아닌/.test(u)),
       from: pm.startHub?.id || null, to: pm.endHub?.id || null, km: Math.round(pm.safe.len) / 1000,
-      links: pm.safe.steps.map(s => s.link), red: sim.trip.redLinks, unmet: r.unmet, hourOfDay: hour(),
+      links: pm.safe.steps.map(s => s.link), red: sim.trip.redLinks, unmet: r.unmet, hourOfDay: hour(), helmet: sim.helmet,
     });
   }
 

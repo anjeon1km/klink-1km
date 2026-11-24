@@ -1,38 +1,45 @@
 // 시민 앱 · 길찾기: 한 화면에 '추천 하나'만 크게. 다른 방법은 한 줄씩, 자세한 근거는 접어 둡니다.
-// 이동 방식: PM 환승 · 걷기 · 휠체어 · 시각장애 · 경사 적게 (교통약자 보행 경로 + 음성 안내)
+// 이동 방식: PM 환승 · 걷기 · 어르신 · 휠체어 · 시각장애 · 경사 적게 (교통약자 보행 경로 + 음성 안내)
+// 자주 가는 곳: 회기역·기숙사·정문·캠퍼스 상부 — 밤에는 기숙사행이 기본 (학회 피드백: 야간 회기역 이용은 기숙사생이 많음)
 import { h, clear, fmtMin, fmtM, fmtN, fmtClock, gradeChip, toast } from '../dom.js';
 import { gradeBar } from '../charts.js';
 import { state, set, hour, isNight } from '../../state.js';
 import { searchPlaces, cellAt } from '../../data.js';
+import { metres } from '../../core/graph.js';
 import { PARAMS } from '../../core/params.js';
-import { TYPES } from '../../core/analysis.js';
 import { store } from '../../store.js';
 import { startGuide } from './guide.js';
 import { stepTitle, stepCautions, alertsFor } from './steps.js';
 import { ICON } from '../icons.js';
 import { live, conditions, weatherLabel, airGrade, bikesNear, agoText, onLive } from '../../live.js';
 import { locateOnce, startWatch, geoErrorText, distanceOutside } from '../../geo.js';
+import { voiceHelpOn, setVoiceHelp } from '../voicehelp.js';
 
 const SCENARIOS = [
   { id: 'A', label: '평일 아침 통학 · 회기역 → 캠퍼스 상부', time: 520, from: 'H1', to: 'H3', profile: 'pm' },
+  { id: 'D', label: '평일 밤 귀가 · 회기역 → 경희대 기숙사', time: 1390, from: 'H1', to: 'H5', profile: 'pm' },
   { id: 'B', label: '평일 밤 귀가 · 회기역 → 이문동 주택가', time: 1390, from: 'H1', to: { lat: 37.59852, lon: 127.06402, label: '이문동 주택가 (이문로 일대)' }, profile: 'pm' },
   { id: 'R', label: '하교 · 캠퍼스 상부 → 회기역', time: 1050, from: 'H3', to: 'H1', profile: 'pm' },
   { id: 'W', label: '휠체어 · 회기역 → 경희의료원', time: 600, from: 'H1', to: 'H2', profile: 'wheelchair' },
   { id: 'W2', label: '휠체어 · 회기역 → 캠퍼스 상부 (급경사)', time: 600, from: 'H1', to: 'H3', profile: 'wheelchair' },
   { id: 'V', label: '시각장애 · 회기역 → 경희의료원', time: 600, from: 'H1', to: 'H2', profile: 'blind' },
+  { id: 'S', label: '어르신 · 회기역 → 경희의료원', time: 600, from: 'H1', to: 'H2', profile: 'senior' },
 ];
 export const PROFILES = [
   { key: 'pm', label: 'PM 환승', icon: 'scooter' },
   { key: 'general', label: '걷기', icon: 'walk' },
+  { key: 'senior', label: '어르신', icon: 'senior' },
   { key: 'wheelchair', label: '휠체어', icon: 'wheelchair' },
   { key: 'blind', label: '시각장애', icon: 'cane' },
   { key: 'lowslope', label: '경사 적게', icon: 'slope' },
 ];
+// 자주 가는 곳 (시범 거점 코드)
+const QUICK = [['H5', '기숙사'], ['H3', '캠퍼스'], ['H2', '정문·의료원'], ['H1', '회기역']];
 
 export function renderRoute(app, body) {
   const { data, map } = app;
   const place = p => (typeof p === 'string' ? { lat: data.pilot[p].lat, lon: data.pilot[p].lon, label: `${data.pilot[p].code} ${data.pilot[p].name}` } : p);
-  const trip = state.trip || (state.trip = { from: place('H1'), to: place('H3'), choice: 'main', profile: 'pm' });
+  const trip = state.trip || (state.trip = { from: place('H1'), to: place(isNight() ? 'H5' : 'H3'), choice: 'main', profile: 'pm' });
   trip.profile ??= 'pm';
   let unsub = null;
 
@@ -72,11 +79,15 @@ export function renderRoute(app, body) {
     const p = trip.plan;
     body.append(h('section.block', null,
       h('div.od', null, ...odField('from'), ...odField('to')),
+      h('div.quick-dest', { role: 'group', 'aria-label': '자주 가는 곳으로 도착지 정하기' }, h('span.muted', null, '도착'), QUICK.map(([code, label]) => {
+        const p = place(code); const on = trip.to && metres(trip.to.lat, trip.to.lon, p.lat, p.lon) < 5;
+        return h('button.chip-btn', { type: 'button', 'aria-pressed': String(on), 'aria-label': `도착지를 ${data.pilot[code].name}(으)로`, onclick: () => { trip.to = p; if (trip.from && metres(trip.from.lat, trip.from.lon, p.lat, p.lon) < 5) trip.from = place(code === 'H1' ? 'H5' : 'H1'); replan(true); draw(); } }, label);
+      })),
       h('button.btn.small.ghost.my-loc', { type: 'button', onclick: useMyLocation }, h('span', { html: ICON.pin }), trip.from?.label === '내 위치' ? ' 내 위치 다시 찾기' : ' 내 위치에서 출발'),
       h('div.row-between', null,
         h('select.input.select-quiet', { id: 'scenario', 'aria-label': '예시 경로', onchange: e => { const s = SCENARIOS.find(x => x.id === e.target.value); if (!s) return; set({ minutes: s.time }, 'clock'); trip.from = place(s.from); trip.to = place(s.to); trip.profile = s.profile; replan(true); draw(); } },
           h('option', { value: '' }, '예시 경로 고르기'), SCENARIOS.map(s => h('option', { value: s.id }, s.label))),
-        h('button.btn.small.ghost', { type: 'button', onclick: () => { [trip.from, trip.to] = [trip.to, trip.from]; replan(true); draw(); }, title: '출발·도착 바꾸기' }, '⇅ 바꾸기'))));
+        h('button.btn.small.ghost', { type: 'button', onclick: () => { [trip.from, trip.to] = [trip.to, trip.from]; replan(true); draw(); }, title: '출발·도착 바꾸기', 'aria-label': '출발지와 도착지 바꾸기' }, '⇅ 바꾸기'))));
 
     body.append(h('section.block', null,
       h('h3.block-title', null, '어떤 경로를 선택하시나요?'),
@@ -153,6 +164,8 @@ function pmHero(p, app) {
     gradeBar(s.byGrade),
     h('p.hero-line', null, caution ? '황색(주의) 구간이 많아요. 권장 속도로 천천히 가세요.' : why),
     pm.walkFirstNote ? h('p.hero-sub', null, pm.walkFirstNote) : null,
+    pm.walkLastNote ? h('p.hero-sub', null, pm.walkLastNote) : null,
+    villageBusNote(p),
     h('div.hero-checks', null,
       h('span.check', null, `적색 ${s.byGrade.R ? fmtM(s.byGrade.R) : '없음'}`),
       h('span.check' + (p.ctx?.slow ? '.warn' : ''), null, `권장 ${p.night || p.ctx?.slow ? PARAMS.speed.night.G : PARAMS.speed.day.G} km/h${p.ctx?.slow && !p.night ? ` (${p.weather.why})` : ''}`),
@@ -167,7 +180,7 @@ function walkHero(p, app, map) {
   const sm = w.summary;
   const checks = [];
   const al = alertsFor(w, p.profile); const steep = al.filter(a => a.kind === 'steep'); const unsig = al.filter(a => a.kind === 'crossUnsig');
-  if (p.profile === 'wheelchair' || p.profile === 'lowslope') {
+  if (p.profile === 'wheelchair' || p.profile === 'lowslope' || p.profile === 'senior') {
     checks.push(h('span.check' + (sm.stairs ? '' : '.good'), null, sm.stairs ? `계단 ${sm.stairs}곳` : '계단 없음'));
     checks.push(steep.length ? h('span.check', null, `급경사 ${steep.length}곳 미리 알림`) : h('span.check.good', null, `최대 경사 ${sm.maxSlope.toFixed(0)}%`));
   }
@@ -175,6 +188,7 @@ function walkHero(p, app, map) {
     checks.push(h('span.check.good', null, `보도 ${Math.round(sm.sidewalkShare * 100)}%`));
     checks.push(h('span.check' + (unsig.length ? '' : '.good'), null, unsig.length ? `비신호 횡단 ${unsig.length}곳 미리 알림` : '비신호 횡단 없음'));
   }
+  if (p.profile === 'senior' && unsig.length) checks.push(h('span.check', null, `신호 없는 횡단 ${unsig.length}곳`));
   if (p.profile === 'general') checks.push(h('span.check', null, fmtM(w.len)));
   if (sm.blockedNear === 0 && data_hasHazards()) checks.push(h('span.check.good', null, '제보된 파손 구간 피함'));
   const line = {
@@ -182,15 +196,36 @@ function walkHero(p, app, map) {
     wheelchair: w.assist ? `휠체어로 혼자 가기 어려운 급경사(최대 ${Math.round(sm.maxSlope)}%)가 있어요. 동행이나 택시를 권하고, 급경사 50 m 앞에서 미리 알려 드려요.` : steep.length ? `피할 수 없는 급경사(1/12 초과)가 ${steep.length}곳, ${fmtM(steep.reduce((t, a) => t + a.len, 0))} 있어요. 50 m 앞에서 미리 알려 드려요.` : '계단과 1/12(8.3%)이 넘는 경사를 뺀 길이에요.',
     blind: unsig.length ? '보도와 신호 횡단보도 위주로 고른 길이에요. 신호등 없는 횡단보도는 30 m 앞에서 미리 알려 드려요.' : '보도와 신호 횡단보도 위주로 고른 길이에요. 음성으로 한 단계씩 안내해요.',
     lowslope: w.relaxed ? `가파른 구간이 ${fmtM(sm.steepM)} 있어요. 쉬어 가세요.` : '오르막·내리막이 가장 적은 길이에요.',
+    senior: w.relaxed ? `가파른 구간이 ${fmtM(sm.steepM)} 있어요. 천천히, 쉬어 가세요.` : `계단·급경사를 피하고 신호 있는 횡단보도를 우선한 길이에요.${unsig.length ? ` 신호 없는 횡단보도 ${unsig.length}곳은 30 m 앞에서 미리 알려 드려요.` : ''} 천천히 걷는 속도로 시간을 잡았어요.`,
   }[p.profile];
   return h('section.hero' + (w.relaxed || steep.length && p.profile === 'wheelchair' ? '.warn' : ''), null,
     h('div.hero-eyebrow', null, `추천 · ${pr.label}`),
     h('div.hero-main', null, h('span.hero-min', null, Math.max(1, Math.round(w.sec / 60))), h('span.hero-unit', null, '분'), h('span.hero-meta', null, fmtM(w.len), h('br'), `안내 ${w.steps.length}단계`)),
     h('p.hero-line', null, line),
     p.weather && (p.weather.wet || p.weather.snow) ? h('p.hero-sub', null, `실시간 ${p.weather.why}: 경사로·계단·횡단보도가 미끄러워요. 천천히 가세요.`) : null,
+    (p.profile === 'senior' || p.profile === 'lowslope') && p.bus?.running && p.bus.total < w.sec / 60 - 5 ? h('p.hero-sub', null, h('b', null, `${p.bus.route.no}${/^d/.test(p.bus.route.no) ? '번' : ''} ${p.bus.route.type === 'village' ? '마을버스' : '버스'}로 ${Math.round(p.bus.total)}분`), ' — 오르막이 힘드시면 아래의 버스를 권해요.') : null,
     h('div.hero-checks', null, checks.slice(0, 3)),
-    h('button.btn.primary.big', { type: 'button', onclick: () => startGuide(app, w, p) }, h('span', { html: ICON.speaker }), ' 음성 안내 시작'));
+    h('button.btn.primary.big', { type: 'button', onclick: () => startGuide(app, w, p) }, h('span', { html: ICON.speaker }), ' 음성 안내 시작'),
+    p.profile === 'blind' && !voiceHelpOn() ? h('button.link-btn', { type: 'button', style: { justifySelf: 'center' }, onclick: () => setVoiceHelp(true) }, '앱 버튼도 소리로 읽어 주기 (음성 도움 켜기)') : null);
   function data_hasHazards() { return app.data.planner.blocked?.size > 0 && (p.profile === 'wheelchair' || p.profile === 'blind'); }
+}
+
+// 마을버스가 다니고 시간이 비슷하면 함께 권함 — PM이 마을버스 승객을 빼앗지 않게 (학회 피드백 2)
+function villageBusNote(p) {
+  const b = p.bus; if (!b?.running || b.route.type !== 'village' || !p.pm) return null;
+  if (b.total > p.pm.totalMin + 3) return null;
+  return h('p.hero-sub', null, `${b.route.no} 마을버스도 ${Math.max(1, Math.round(b.total))}분이면 가요. 비슷하면 마을버스도 좋아요 — 지하철에서 갈아타면 환승 할인이 그대로 이어져요.`);
+}
+
+function arrivalInfo(p, data) {
+  const to = p.to, out = [];
+  const hubs = data.planner.hubsNear(to, { night: p.night, maxM: 600, limit: 1 });
+  if (hubs.length) { const { h: hub, d } = hubs[0]; out.push(`가장 가까운 PM 반납 거점: ${hub.name} (${hub.grade}급, ${d < 20 ? '도착지 바로 앞' : fmtM(d)})${p.night ? (hub.nightSafe ? ' · 야간 안심거점' : ' · 야간 안심거점 아님') : ''}`); }
+  const c = cellAt(data, to.lat, to.lon);
+  if (c && !c.excluded && c.tStation != null) out.push(`가까운 지하철역까지 걸어서 약 ${Math.round(c.tStation)}분`);
+  const st = data.bike.stations.map(s => ({ s, d: metres(to.lat, to.lon, s.lat, s.lon) })).sort((a, b) => a.d - b.d)[0];
+  if (st && st.d <= 400) { const lv = state.live ? bikesNear(st.s.lat, st.s.lon, 30)[0] : null; out.push(`따릉이 ${st.s.name} (${fmtM(st.d)})${lv ? ` · 지금 ${lv.bikes}대` : ''}`); }
+  return out;
 }
 
 // ── 실시간: 한 줄 띠 — 날씨·미세먼지·출발지 근처 따릉이 (펼치면 자세히)
@@ -253,12 +288,9 @@ function moreDetails(p, data) {
       p.walkGeneral && p.profile !== 'general' ? h('p.muted', null, `일반 도보(${fmtMin(p.walkGeneral.sec / 60)})보다 ${Math.max(0, Math.round((w.sec - p.walkGeneral.sec) / 60))}분 더 걸려요.`) : null,
       h('p.muted', null, '보도 유무는 OSM 태그와 도로 위계로 추정했어요. 점자블록·음향신호기·턱낮춤 위치 자료를 넣으면 더 정확해져요.')));
   }
-  const c = cellAt(data, p.to.lat, p.to.lon);
-  if (c && !c.excluded) {
-    const type = p.night ? c.typeNight : c.type;
-    parts.push(h('details.more', null, h('summary', null, '목적지 동네 진단'),
-      h('p', null, `${c.dong} · ${TYPES[type].name}`), h('p.muted', null, `역까지 걸어서 ${Math.round(c.tStation)}분 · 이 유형에 맞는 정책: ${TYPES[type].policy.join(', ')}`)));
-  }
+  // 도착지 주변: 시민에게 쓸모 있는 것만 (반납 거점·역까지 거리·따릉이). 동네 유형·정책 진단은 정책 대시보드로 옮김 (학회 피드백)
+  const near = arrivalInfo(p, data);
+  if (near.length) parts.push(h('details.more', null, h('summary', null, '도착지 주변'), h('ul.list', null, near.map(t => h('li', null, t)))));
   return h('section.block.more-block', null, h('h3.block-title', null, '자세히'), parts);
 }
 

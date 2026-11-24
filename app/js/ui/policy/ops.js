@@ -7,6 +7,14 @@ import { F, linkReasons } from '../../core/grading.js';
 import { LEVEL } from '../../core/transfer.js';
 import { REPORT_CATS } from '../citizen/report.js';
 
+// 헬멧 인증률 (학회 피드백 3: 안전장비 착용 확인) — 출발 전 안전 확인을 거친 기록만
+function helmetKpi(trips, kpi) {
+  const asked = trips.filter(r => r.helmet != null);
+  if (!asked.length) return kpi('헬멧 인증률', '—', '출발 전 확인 기록 없음', null);
+  const ok = asked.filter(r => r.helmet === 'personal' || r.helmet === 'shared').length / asked.length;
+  return kpi('헬멧 인증률', `${Math.round(ok * 100)}%`, `목표 70% 이상 · 미착용 ${asked.filter(r => r.helmet === 'none').length}건`, ok >= 0.7);
+}
+
 export function renderOps(app, body) {
   const { data, map } = app;
   const net = data.network, L = net.links;
@@ -82,7 +90,8 @@ export function renderOps(app, body) {
           kpi('거점 반납률', `${Math.round(atHub * 100)}%`, '목표 80% 이상', atHub >= 0.8),
           kpi('환승 인정 비중', `${Math.round(ok.length / trips.length * 100)}%`, '매달 증가', null),
           kpi('적색 구간 통행 비중', `${Math.round(red * 100)}%`, '감소', red === 0),
-          kpi('야간 환승 인정', `${trips.filter(r => r.nightBenefit).length}건`, '22~01시', null)),
+          kpi('야간 환승 인정', `${trips.filter(r => r.nightBenefit).length}건`, '22~01시', null),
+          helmetKpi(trips, kpi)),
         h('small.muted', null, '정책안 9장 지표 중 앱 기록으로 계산되는 것만 보입니다. 방치 민원·견인, 사고, 대체 수단 설문은 구청·업체·TAAS 자료로 채웁니다.')));
     }
     body.append(h('div.card', null, h('h3', null, `환승 판정 기록 ${trips.length}건`),

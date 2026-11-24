@@ -1,7 +1,7 @@
 // 안키로 서비스 워커: 한 번 연 뒤에는 인터넷이 없어도 앱이 열리게 합니다.
 // 같은 출처 파일은 '네트워크 먼저'(온라인이면 항상 최신, 오프라인이면 저장본), 글꼴은 '저장본 먼저'.
 // 앱 파일 목록과 VERSION은 `npm run pwa`(tools/make_pwa.js)가 채웁니다 — 내용이 바뀌면 VERSION도 바뀌어 예전 저장본이 지워집니다.
-const VERSION = 'ankiro-08ac13fb2d';
+const VERSION = 'ankiro-79bc6bf6bf';
 const CORE = [
   // <precache>
   './',
@@ -47,11 +47,13 @@ const CORE = [
   'js/ui/citizen/steps.js',
   'js/ui/dom.js',
   'js/ui/icons.js',
+  'js/ui/policy/finance.js',
   'js/ui/policy/method.js',
   'js/ui/policy/ops.js',
   'js/ui/policy/sim.js',
   'js/ui/policy/types.js',
   'js/ui/policy/vuln.js',
+  'js/ui/voicehelp.js',
   'manifest.webmanifest',
   'vendor/leaflet.css',
   'vendor/leaflet.js',

@@ -5,6 +5,7 @@ export const ICON = {
   walk: s('<circle cx="13" cy="4.5" r="1.8"/><path d="M11 21l2-6 3 2v4"/><path d="M8 12l3-4 3 1 2 3"/><path d="M13 15l-1-6"/>'),
   wheelchair: s('<circle cx="10" cy="4.5" r="1.8"/><path d="M10 7v6h6l2 5"/><path d="M10 10h5"/><path d="M8 11.5a5 5 0 1 0 6.5 6.5"/>'),
   cane: s('<circle cx="11" cy="4.5" r="1.8"/><path d="M11 7l-1 6 2 3v5"/><path d="M10 13l-2 8"/><path d="M12 9l3 3"/><path d="M15 12l4 9"/>'),
+  senior: s('<circle cx="10" cy="4.5" r="1.8"/><path d="M9.5 7.5c-1.5 2-1.5 4.5 0 6.5l-2 7"/><path d="M9.5 14l3 2.5V21"/><path d="M9.8 9.5l4.2 2"/><path d="M14 11.5V21"/>'),
   slope: s('<path d="M3 19h18"/><path d="M3 19l18-9"/><path d="M8 19v-2.5"/><path d="M13 19v-5"/>'),
   bus: s('<rect x="4" y="4" width="16" height="13" rx="2.5"/><path d="M4 11h16"/><circle cx="8" cy="20" r="1.3"/><circle cx="16" cy="20" r="1.3"/><path d="M8 17v1.7M16 17v1.7"/>'),
   taxi: s('<path d="M4 16v-4l2-5h12l2 5v4z"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/><path d="M10 5h4"/>'),

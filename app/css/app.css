@@ -322,12 +322,11 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 .od-input:focus { background: var(--panel); border-color: var(--accent); }
 .od .icon-btn { width: 40px; height: 40px; }
 select.select-quiet { width: auto; flex: 1 1 auto; min-width: 0; max-width: 100%; border-color: transparent; background: transparent; color: var(--ink-2); font-size: 13.5px; padding: 6px 2px; }
-.profile-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.profile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .profile { display: grid; justify-items: center; gap: 4px; padding: 10px 4px 8px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--panel); cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--ink-2); min-width: 0; }
 .profile span:last-child { white-space: nowrap; }
 .profile[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .profile-ico { display: grid; place-items: center; height: 24px; }
-@media (max-width: 340px) { .profile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 420px) { .profile { font-size: 11.5px; padding: 9px 2px 7px; } }
 
 .hero { border-radius: 16px; padding: 18px; display: grid; gap: 10px; background: var(--panel-2); border: 1.5px solid var(--line); }
@@ -450,3 +449,33 @@ details.more > :not(summary) { margin-bottom: 10px; }
 .install-bar { border-radius: 18px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pill.live { color: var(--brand-lime); background: #1e3317; } }
 :root[data-theme="dark"] .pill.live { color: var(--brand-lime); background: #1e3317; }
+
+/* ── 학회 피드백 반영: 자주 가는 곳 · 보기 설정 · 쉬운 화면 · 음성 도움 · 안전 확인 */
+.quick-dest { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 2px 0 4px; }
+.quick-dest > .muted { font-size: 12.5px; margin-right: 2px; }
+.quick-dest .chip-btn { padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.quick-dest .chip-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.view-pop { right: 16px; }
+.view-pop .check-row { align-items: flex-start; }
+.view-pop .check-row input { margin-top: 3px; }
+.font-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--panel-2); border-radius: 999px; padding: 3px; }
+.font-levels button { border: 0; background: transparent; border-radius: 999px; padding: 7px 4px; font-weight: 600; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.font-levels button[data-level="1"] { font-size: 14.5px; }
+.font-levels button[data-level="2"] { font-size: 16px; }
+.font-levels button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.choice-row { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+.choice-row input { margin-top: 3px; accent-color: var(--accent); }
+.choice-row b { display: block; font-size: 14.5px; }
+.choice-row small { color: var(--muted); font-size: 12.5px; }
+.choice-row:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.modal-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+/* 음성 도움: 한 번 누른 단추 표시 */
+.vh-armed { outline: 3px solid var(--accent) !important; outline-offset: 2px; }
+/* 쉬운 화면: 부가 기능 숨기고 단추·글씨 크게 */
+.app[data-easy="1"] .seg, .app[data-easy="1"] #tab-hubs, .app[data-easy="1"] #scenario, .app[data-easy="1"] .more-block, .app[data-easy="1"] #feedback-btn { display: none; }
+.app[data-easy="1"] .btn { min-height: 46px; }
+.app[data-easy="1"] .btn.big { min-height: 56px; font-size: 18px; }
+.app[data-easy="1"] .profile { padding: 14px 6px 12px; font-size: 14px; }
+.app[data-easy="1"] .quick-dest .chip-btn { padding: 9px 14px; font-size: 14.5px; }
+.app[data-easy="1"] .tabs button { font-size: 15.5px; padding: 11px 12px 12px; }
+.app[data-easy="1"] .od-input { min-height: 46px; font-size: 16px; }

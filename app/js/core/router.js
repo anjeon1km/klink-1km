@@ -269,7 +269,7 @@ export class Planner {
     return best;
   }
 
-  // profile: 'pm' (PM 환승, 기본) | 'general' (걷기) | 'wheelchair' | 'blind' | 'lowslope'
+  // profile: 'pm' (PM 환승, 기본) | 'general' (걷기) | 'senior' (어르신) | 'wheelchair' | 'blind' | 'lowslope'
   // weather: 실시간 길 상태 { slow, noPm, why } (live.js conditions) — 없으면 예측치만으로 계산
   plan({ from, to, hour = new Date().getHours(), forceNight = null, weights = null, litOnly = true, useOverrides = true, profile = 'pm', weather = null }) {
     const night = forceNight ?? isNightHour(hour);

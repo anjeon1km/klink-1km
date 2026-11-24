@@ -14,6 +14,7 @@ const ALERT_KINDS = {
   blind: ['crossUnsig', 'crossSig', 'stairs', 'steep'],
   wheelchair: ['steep', 'crossUnsig'],
   lowslope: ['steep', 'stairs'],
+  senior: ['crossUnsig', 'stairs', 'steep'],
   general: ['crossUnsig', 'stairs', 'steep'],
 };
 export const alertsFor = (walk, profile) => (walk.alerts || []).filter(a => (ALERT_KINDS[String(profile).replace(/Relaxed|Steep/, '')] || ALERT_KINDS.general).includes(a.kind));

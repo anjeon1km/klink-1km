@@ -115,12 +115,15 @@ export const WALK_PROFILES = {
   wheelchair: { name: '휠체어', kmh: 3.6, maxSlope: WHEELCHAIR_MAX_SLOPE, slopeFrom: 100 / 18, slopeW: 0.35, noSteps: true, noRough: true, unsigW: 0.6, sharedW: 0.3, blockReports: true },
   blind: { name: '시각장애', kmh: 3.6, slopeFrom: 6, slopeW: 0.1, stepsW: 2, roughW: 1, unsigW: 1.5, sharedW: 0.8, pathW: 0.5, blockReports: true },
   lowslope: { name: '경사 적게', kmh: 4.0, maxSlope: 12, slopeFrom: 3, slopeW: 0.3, stepsW: 2 },
+  // 어르신: 고령자 하위 15% 보행속도 0.85 m/s(≈3.1 km/h, 2020 실측 연구)로 시간을 잡고, 계단·급경사·신호 없는 횡단·보차혼용 길을 피함
+  senior: { name: '어르신', kmh: 3.1, maxSlope: 12, slopeFrom: 4, slopeW: 0.3, stepsW: 2.5, unsigW: 1.0, sharedW: 0.5 },
 };
 // 기준을 지키는 길이 없을 때 쓰는 완화 프로필 (가장 완만한 길 + 경고)
 WALK_PROFILES.wheelchairRelaxed = { ...WALK_PROFILES.wheelchair, name: '휠체어 (완화)', maxSlope: 16, slopeW: 0.8 };
 // 1/6(16%)을 지키는 길도 없을 때(언덕 위 목적지): 경사 제한 없이 가장 완만한 길 — 동행·택시를 권하고 급경사를 미리 알림
 WALK_PROFILES.wheelchairSteep = { ...WALK_PROFILES.wheelchair, name: '휠체어 (동행 필요)', maxSlope: null, slopeW: 1.2 };
 WALK_PROFILES.lowslopeRelaxed = { ...WALK_PROFILES.lowslope, name: '경사 적게 (완화)', maxSlope: null, slopeW: 0.6 };
+WALK_PROFILES.seniorRelaxed = { ...WALK_PROFILES.senior, name: '어르신 (완화)', maxSlope: null, slopeW: 0.6 };
 
 // Tobler hiking function scaled so flat ground = base km/h
 export function walkSpeed(slopePct, kmh = PARAMS.walkKmh) {
